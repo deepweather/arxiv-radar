@@ -39,7 +39,7 @@ export default function ImprintPage() {
 
             {address && (
               <Section title="Address">
-                {address.split("\\n").map((line, i) => (
+                {address.split("\\n").map((line: string, i: number) => (
                   <p key={i}>{line}</p>
                 ))}
               </Section>
