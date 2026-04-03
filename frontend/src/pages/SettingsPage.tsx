@@ -83,11 +83,10 @@ export default function SettingsPage() {
         <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 space-y-2">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-brand-200 dark:bg-brand-800 flex items-center justify-center text-sm font-bold text-brand-800 dark:text-brand-200">
-              {user.username[0].toUpperCase()}
+              {user.email[0].toUpperCase()}
             </div>
             <div>
-              <p className="font-medium">{user.username}</p>
-              <p className="text-sm text-gray-500">{user.email}</p>
+              <p className="font-medium">{user.email}</p>
             </div>
           </div>
         </div>

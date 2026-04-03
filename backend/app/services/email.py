@@ -62,11 +62,10 @@ def _wrap_html(content: str) -> str:
 </html>"""
 
 
-def send_verification_email(to_email: str, username: str, token: str) -> bool:
+def send_verification_email(to_email: str, token: str) -> bool:
     link = f"{settings.frontend_url}/verify-email?token={token}"
-    safe_user = html.escape(username)
     content = f"""
-    <p>Hi {safe_user},</p>
+    <p>Hi,</p>
     <p>Thanks for signing up! Please verify your email address by clicking below:</p>
     <div style="text-align:center;margin:24px 0;">
       <a href="{link}"
@@ -80,11 +79,10 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
     return _send_email(to_email, "Verify your email — arxiv radar", _wrap_html(content))
 
 
-def send_password_reset_email(to_email: str, username: str, token: str) -> bool:
+def send_password_reset_email(to_email: str, token: str) -> bool:
     link = f"{settings.frontend_url}/reset-password?token={token}"
-    safe_user = html.escape(username)
     content = f"""
-    <p>Hi {safe_user},</p>
+    <p>Hi,</p>
     <p>We received a request to reset your password. Click below to choose a new one:</p>
     <div style="text-align:center;margin:24px 0;">
       <a href="{link}"
@@ -99,8 +97,7 @@ def send_password_reset_email(to_email: str, username: str, token: str) -> bool:
     return _send_email(to_email, "Reset your password — arxiv radar", _wrap_html(content))
 
 
-def send_digest_email(to_email: str, username: str, papers: list[dict]) -> bool:
-    safe_username = html.escape(username)
+def send_digest_email(to_email: str, papers: list[dict]) -> bool:
     paper_rows = ""
     for p in papers[:20]:
         authors = html.escape(", ".join(a["name"] for a in p.get("authors", [])[:3]))
@@ -119,7 +116,7 @@ def send_digest_email(to_email: str, username: str, papers: list[dict]) -> bool:
         </tr>"""
 
     content = f"""
-    <p>Hi {safe_username},</p>
+    <p>Hi,</p>
     <p>Here are your top paper recommendations based on your tags:</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;">
       {paper_rows}

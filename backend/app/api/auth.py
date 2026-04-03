@@ -25,7 +25,6 @@ PASSWORD_RESET_EXPIRE_HOURS = 1
 # --------------- Request / Response models ---------------
 
 class RegisterRequest(BaseModel):
-    username: str
     email: EmailStr
     password: str
     company: str = ""
@@ -46,7 +45,6 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     id: str
-    username: str
     email: str
     is_email_verified: bool
 
@@ -126,19 +124,14 @@ async def register(
 
     if len(body.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-    if len(body.username) < 2:
-        raise HTTPException(status_code=400, detail="Username must be at least 2 characters")
 
-    existing = await db.execute(
-        select(User).where((User.email == body.email) | (User.username == body.username))
-    )
+    existing = await db.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Email or username already taken")
+        raise HTTPException(status_code=409, detail="Email already registered")
 
     verification_token = secrets.token_urlsafe(48)
 
     user = User(
-        username=body.username,
         email=body.email,
         password_hash=_hash_password(body.password),
         is_email_verified=False,
@@ -147,7 +140,7 @@ async def register(
     db.add(user)
     await db.flush()
 
-    send_verification_email(body.email, body.username, verification_token)
+    send_verification_email(body.email, verification_token)
 
     access_token = _create_token(str(user.id), "access")
     refresh_token = _create_token(str(user.id), "refresh")
@@ -207,7 +200,6 @@ async def logout(response: Response):
 async def me(user: User = Depends(get_current_user)):
     return UserResponse(
         id=str(user.id),
-        username=user.username,
         email=user.email,
         is_email_verified=user.is_email_verified,
     )
@@ -239,7 +231,7 @@ async def resend_verification(body: ResendVerificationRequest, db: AsyncSession 
         token = secrets.token_urlsafe(48)
         user.email_verification_token = token
         await db.flush()
-        send_verification_email(user.email, user.username, token)
+        send_verification_email(user.email, token)
 
     # Always return success to prevent email enumeration
     return MessageResponse(detail="If that email is registered and unverified, a verification link has been sent.")
@@ -257,7 +249,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
         user.password_reset_token = token
         user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=PASSWORD_RESET_EXPIRE_HOURS)
         await db.flush()
-        send_password_reset_email(user.email, user.username, token)
+        send_password_reset_email(user.email, token)
 
     # Always return success to prevent email enumeration
     return MessageResponse(detail="If that email is registered, a password reset link has been sent.")

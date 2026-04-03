@@ -107,9 +107,9 @@ export default function Layout() {
           {user && (
             <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-500 dark:text-gray-500">
               <div className="w-7 h-7 rounded-full bg-brand-200 dark:bg-brand-800 flex items-center justify-center text-xs font-bold text-brand-800 dark:text-brand-200">
-                {user.username[0].toUpperCase()}
+                {user.email[0].toUpperCase()}
               </div>
-              {user.username}
+              {user.email.split("@")[0]}
             </div>
           )}
           <Link

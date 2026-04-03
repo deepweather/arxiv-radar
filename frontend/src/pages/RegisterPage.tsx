@@ -4,7 +4,6 @@ import { useRegister } from "@/hooks/useAuth";
 import { getHttpStatus } from "@/api/errors";
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [company, setCompany] = useState("");
@@ -14,7 +13,6 @@ export default function RegisterPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     register.mutate({
-      username,
       email,
       password,
       company,
@@ -30,14 +28,6 @@ export default function RegisterPage() {
           <p className="mt-2 text-gray-500 dark:text-gray-400">Create your account</p>
         </div>
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none"
-          />
           <input
             type="email"
             placeholder="Email"
@@ -69,7 +59,7 @@ export default function RegisterPage() {
             <p className="text-sm text-red-600">
               {getHttpStatus(register.error) === 429
                 ? "Too many attempts. Please wait before trying again."
-                : "Registration failed. Email or username may be taken."}
+                : "Registration failed. Email may already be registered."}
             </p>
           )}
           <button
