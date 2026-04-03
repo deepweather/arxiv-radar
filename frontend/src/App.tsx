@@ -6,7 +6,7 @@ import PaperDetailPage from "./pages/PaperDetailPage";
 import TagsPage from "./pages/TagsPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import CollectionDetailPage from "./pages/CollectionDetailPage";
-import TrendingPage from "./pages/TrendingPage";
+import SavedPage from "./pages/SavedPage";
 import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -25,7 +25,7 @@ export default function App() {
         <Route path="/tags" element={<TagsPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
-        <Route path="/trending" element={<TrendingPage />} />
+        <Route path="/saved" element={<SavedPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="/login" element={<LoginPage />} />

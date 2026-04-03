@@ -1,16 +1,19 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Bookmark, ExternalLink, Tag as TagIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Paper } from "@/types";
+import TagPicker from "@/components/tags/TagPicker";
 
 interface PaperCardProps {
   paper: Paper;
   onSave?: (id: string) => void;
-  onTag?: (id: string) => void;
+  onTag?: boolean;
   saved?: boolean;
 }
 
 export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProps) {
+  const [showTagPicker, setShowTagPicker] = useState(false);
   const authorStr = paper.authors.map((a) => a.name).join(", ");
   const timeAgo = paper.published_at
     ? formatDistanceToNow(new Date(paper.published_at), { addSuffix: true })
@@ -43,13 +46,18 @@ export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProp
             </button>
           )}
           {onTag && (
-            <button
-              onClick={() => onTag(paper.id)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              aria-label="Add tag"
-            >
-              <TagIcon size={16} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowTagPicker(!showTagPicker)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Add tag"
+              >
+                <TagIcon size={16} />
+              </button>
+              {showTagPicker && (
+                <TagPicker paperId={paper.id} onClose={() => setShowTagPicker(false)} />
+              )}
+            </div>
           )}
           <a
             href={`https://arxiv.org/abs/${paper.id}`}
@@ -68,12 +76,13 @@ export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProp
       <div className="mt-3 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
         <span>{timeAgo}</span>
         {paper.categories.slice(0, 3).map((cat) => (
-          <span
+          <Link
             key={cat}
-            className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+            to={`/search?categories=${cat}`}
+            className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-brand-950 dark:hover:text-brand-400 transition-colors"
           >
             {cat}
-          </span>
+          </Link>
         ))}
         {(paper.score ?? paper.similarity) !== undefined && (
           <span className="ml-auto font-mono text-brand-600 dark:text-brand-400">

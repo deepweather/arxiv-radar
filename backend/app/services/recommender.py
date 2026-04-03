@@ -115,3 +115,39 @@ async def recommend_for_user(
     """)
     result = await db.execute(sql, params)
     return [paper_row_to_dict(row) for row in result.fetchall()]
+
+
+async def papers_by_authors(
+    db: AsyncSession,
+    author_names: list[str],
+    exclude_paper_id: str | None = None,
+    limit: int = 10,
+) -> list[dict]:
+    """Find papers by matching author names in the JSONB authors column."""
+    if not author_names:
+        return []
+
+    names_to_search = author_names[:3]
+    conditions = " OR ".join(
+        f"EXISTS (SELECT 1 FROM jsonb_array_elements(p.authors) AS a WHERE a->>'name' = :name_{i})"
+        for i in range(len(names_to_search))
+    )
+    params: dict = {f"name_{i}": name for i, name in enumerate(names_to_search)}
+    params["limit"] = limit
+
+    exclude = ""
+    if exclude_paper_id:
+        exclude = "AND p.id != :exclude_id"
+        params["exclude_id"] = exclude_paper_id
+
+    sql = text(f"""
+        SELECT p.id, p.title, p.summary, p.authors, p.categories,
+               p.pdf_url, p.published_at, p.updated_at
+        FROM papers p
+        WHERE ({conditions})
+          {exclude}
+        ORDER BY p.published_at DESC
+        LIMIT :limit
+    """)
+    result = await db.execute(sql, params)
+    return [paper_row_to_dict(row) for row in result.fetchall()]

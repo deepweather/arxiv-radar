@@ -10,7 +10,3 @@ RRF_K = 60
 # pgvector HNSW index parameters
 HNSW_M = 16
 HNSW_EF_CONSTRUCTION = 64
-
-# Semantic Scholar citation cache TTL (seconds)
-CITATION_CACHE_TTL = 86400
-CITATION_ERROR_CACHE_TTL = 300

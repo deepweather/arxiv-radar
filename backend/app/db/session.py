@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from app.config import settings
@@ -12,6 +14,19 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
         try:
             yield session
             await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+@asynccontextmanager
+async def get_db_context():
+    """Async context manager for use outside FastAPI endpoints."""
+    async with async_session_factory() as session:
+        try:
+            yield session
         except Exception:
             await session.rollback()
             raise

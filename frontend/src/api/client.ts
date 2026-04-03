@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "@/stores/authStore";
 
 const api = axios.create({
   baseURL: "/api",
@@ -13,10 +14,14 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
-        await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+        const { data } = await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+        if (data.access_token) {
+          api.defaults.headers.common["Authorization"] = `Bearer ${data.access_token}`;
+        }
         return api(original);
       } catch {
-        window.location.href = "/login";
+        delete api.defaults.headers.common["Authorization"];
+        useAuthStore.getState().setUser(null);
         return Promise.reject(error);
       }
     }

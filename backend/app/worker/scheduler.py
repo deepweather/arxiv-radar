@@ -1,4 +1,4 @@
-"""Background worker — runs periodic ingest and embedding tasks via APScheduler."""
+"""Background worker — runs periodic ingest, embedding, and citation fetch tasks."""
 
 import asyncio
 import logging
@@ -34,8 +34,38 @@ async def _run_ingest_and_embed():
             logger.exception("Embedding failed")
 
 
+async def _run_citation_fetch():
+    from app.services.citations import fetch_citations_batch
+    from sqlalchemy import text
+
+    async with session_factory() as db:
+        try:
+            # First, queue any papers that aren't in the cache yet
+            await db.execute(text("""
+                INSERT INTO citation_cache (paper_id, status, data)
+                SELECT p.id, 'pending', '{}'::jsonb
+                FROM papers p
+                LEFT JOIN citation_cache cc ON cc.paper_id = p.id
+                WHERE cc.paper_id IS NULL
+            """))
+            await db.commit()
+        except Exception:
+            logger.exception("Citation queue seeding failed")
+
+    async with session_factory() as db:
+        try:
+            count = await fetch_citations_batch(db, batch_size=50)
+            logger.info("Citation fetch finished: %d papers processed", count)
+        except Exception:
+            logger.exception("Citation fetch failed")
+
+
 def run_ingest_and_embed():
     asyncio.run(_run_ingest_and_embed())
+
+
+def run_citation_fetch():
+    asyncio.run(_run_citation_fetch())
 
 
 if __name__ == "__main__":
@@ -49,15 +79,29 @@ if __name__ == "__main__":
         max_instances=1,
     )
 
-    # Also run once on startup after a short delay
+    scheduler.add_job(
+        run_citation_fetch,
+        "interval",
+        minutes=10,
+        id="citation_fetch",
+        max_instances=1,
+    )
+
+    # Run once on startup
     scheduler.add_job(
         run_ingest_and_embed,
         "date",
         id="ingest_and_embed_startup",
     )
 
+    scheduler.add_job(
+        run_citation_fetch,
+        "date",
+        id="citation_fetch_startup",
+    )
+
     logger.info(
-        "Worker started — ingest every %d minutes for categories: %s",
+        "Worker started — ingest every %d minutes, citation fetch every 10 minutes, categories: %s",
         settings.arxiv_ingest_interval_minutes,
         settings.arxiv_categories,
     )

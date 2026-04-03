@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Trash2, Globe, Lock } from "lucide-react";
+import { Plus, Trash2, Globe, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { useCollections, useCreateCollection, useDeleteCollection } from "@/hooks/useCollections";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -10,6 +10,9 @@ export default function CollectionsPage() {
   const create = useCreateCollection();
   const del = useDeleteCollection();
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
 
   if (!user) {
     return (
@@ -24,6 +27,21 @@ export default function CollectionsPage() {
 
   const collections = data?.collections ?? [];
 
+  const handleCreate = () => {
+    if (!name.trim()) return;
+    create.mutate(
+      { name: name.trim(), description: description.trim() || undefined, is_public: isPublic },
+      {
+        onSuccess: () => {
+          setName("");
+          setDescription("");
+          setIsPublic(false);
+          setShowOptions(false);
+        },
+      },
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -33,23 +51,53 @@ export default function CollectionsPage() {
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="New collection name..."
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && name.trim() && create.mutate({ name: name.trim() }, { onSuccess: () => setName("") })}
-          className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-500"
-        />
+      <div className="space-y-2 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="New collection name..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <button
+            onClick={handleCreate}
+            disabled={create.isPending || !name.trim()}
+            className="px-4 py-2.5 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Create
+          </button>
+        </div>
         <button
-          onClick={() => name.trim() && create.mutate({ name: name.trim() }, { onSuccess: () => setName("") })}
-          disabled={create.isPending}
-          className="px-4 py-2.5 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+          onClick={() => setShowOptions(!showOptions)}
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
-          <Plus size={16} />
-          Create
+          {showOptions ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {showOptions ? "Less options" : "More options"}
         </button>
+        {showOptions && (
+          <div className="space-y-2 pt-1">
+            <input
+              type="text"
+              placeholder="Description (optional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 outline-none focus:ring-2 focus:ring-brand-500 text-sm"
+            />
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Globe size={14} />
+              Public collection
+            </label>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">

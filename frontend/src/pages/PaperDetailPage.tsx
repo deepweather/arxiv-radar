@@ -1,14 +1,39 @@
 import { useParams, Link } from "react-router-dom";
-import { ExternalLink, FileText, ArrowLeft } from "lucide-react";
+import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 import { usePaper, useSimilarPapers } from "@/hooks/usePapers";
+import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
+import { useAuthStore } from "@/stores/authStore";
 import PaperCard from "@/components/papers/PaperCard";
 import CitationGraph from "@/components/citations/CitationGraph";
+import TagPicker from "@/components/tags/TagPicker";
+import api from "@/api/client";
+import { Paper } from "@/types";
+import { useState } from "react";
 
 export default function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const user = useAuthStore((s) => s.user);
   const { data: paper, isLoading } = usePaper(id!);
   const { data: similar } = useSimilarPapers(id!);
+  const { data: authorPapers } = useQuery<{ papers: Paper[] }>({
+    queryKey: ["paper", id, "by-authors"],
+    queryFn: async () => {
+      const { data } = await api.get(`/papers/${id}/by-authors`);
+      return data;
+    },
+    enabled: !!id,
+  });
+  const save = useSavePaper();
+  const unsave = useUnsavePaper();
+  const { data: savedData } = useSavedPapers();
+  const [showTagPicker, setShowTagPicker] = useState(false);
+
+  const savedIds = new Set<string>(
+    (savedData?.papers ?? []).map((p: Paper) => p.id),
+  );
+  const isSaved = id ? savedIds.has(id) : false;
 
   if (isLoading) {
     return (
@@ -49,17 +74,18 @@ export default function PaperDetailPage() {
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-gray-400">{timeAgo}</span>
           {paper.categories.map((cat) => (
-            <span
+            <Link
               key={cat}
-              className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+              to={`/search?categories=${cat}`}
+              className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-brand-950 dark:hover:text-brand-400 transition-colors"
             >
               {cat}
-            </span>
+            </Link>
           ))}
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <a
           href={`https://arxiv.org/abs/${paper.id}`}
           target="_blank"
@@ -80,6 +106,33 @@ export default function PaperDetailPage() {
             PDF
           </a>
         )}
+        {user && (
+          <>
+            <button
+              onClick={() => isSaved ? unsave.mutate(paper.id) : save.mutate(paper.id)}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                isSaved
+                  ? "border-brand-400 bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-400"
+                  : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+              }`}
+            >
+              <Bookmark size={14} fill={isSaved ? "currentColor" : "none"} />
+              {isSaved ? "Saved" : "Save"}
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowTagPicker(!showTagPicker)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <TagIcon size={14} />
+                Tag
+              </button>
+              {showTagPicker && (
+                <TagPicker paperId={paper.id} onClose={() => setShowTagPicker(false)} />
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="prose dark:prose-invert max-w-none">
@@ -97,6 +150,17 @@ export default function PaperDetailPage() {
           <h2 className="text-lg font-semibold mb-4">Similar Papers</h2>
           <div className="space-y-3">
             {similar.papers.slice(0, 10).map((p) => (
+              <PaperCard key={p.id} paper={p} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {authorPapers && authorPapers.papers.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">More from These Authors</h2>
+          <div className="space-y-3">
+            {authorPapers.papers.slice(0, 8).map((p) => (
               <PaperCard key={p.id} paper={p} />
             ))}
           </div>

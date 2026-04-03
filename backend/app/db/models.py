@@ -148,3 +148,27 @@ class WebhookConfig(Base):
 
     user = relationship("User", back_populates="webhook_configs")
     tag = relationship("Tag")
+
+
+class CitationCache(Base):
+    __tablename__ = "citation_cache"
+
+    paper_id = Column(String(20), ForeignKey("papers.id", ondelete="CASCADE"), primary_key=True)
+    status = Column(String(20), nullable=False, server_default="pending", comment="pending|fetched|not_found|error")
+    data = Column(JSONB, nullable=False, default=dict)
+    fetched_at = Column(DateTime(timezone=True), nullable=True)
+    retry_after = Column(DateTime(timezone=True), nullable=True)
+    error_count = Column(Integer, nullable=False, server_default="0")
+
+
+class PaperView(Base):
+    __tablename__ = "paper_views"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    paper_id = Column(String(20), ForeignKey("papers.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_hash = Column(String(64), nullable=False)
+    viewed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_paper_views_paper_viewed", "paper_id", "viewed_at"),
+    )

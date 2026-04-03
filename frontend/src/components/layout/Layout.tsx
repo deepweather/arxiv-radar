@@ -4,7 +4,7 @@ import {
   Search,
   Tags,
   FolderOpen,
-  TrendingUp,
+  Bookmark,
   Settings,
   Moon,
   Sun,
@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { to: "/search", icon: Search, label: "Search" },
   { to: "/tags", icon: Tags, label: "Tags" },
   { to: "/collections", icon: FolderOpen, label: "Collections" },
-  { to: "/trending", icon: TrendingUp, label: "Trending" },
+  { to: "/saved", icon: Bookmark, label: "Saved" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 

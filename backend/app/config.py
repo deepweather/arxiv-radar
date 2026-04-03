@@ -33,9 +33,6 @@ class Settings(BaseSettings):
     # Frontend URL for email links
     frontend_url: str = "http://localhost:5173"
 
-    # Semantic Scholar
-    semantic_scholar_api_key: str = ""
-
     # Security
     cookie_secure: bool = False
 

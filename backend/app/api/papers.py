@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+import hashlib
+
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
+from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.services.search import hybrid_search, list_papers, get_paper, count_papers
-from app.services.recommender import similar_papers
+from app.services.recommender import similar_papers, papers_by_authors
 
 router = APIRouter()
 
@@ -32,11 +35,34 @@ async def paper_count(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{paper_id}")
-async def get_paper_detail(paper_id: str, db: AsyncSession = Depends(get_db)):
+async def get_paper_detail(paper_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     paper = await get_paper(db, paper_id)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
+
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    session_hash = hashlib.sha256(f"{client_ip}:{request.headers.get('user-agent', '')}".encode()).hexdigest()[:16]
+    await db.execute(
+        sa_text("INSERT INTO paper_views (paper_id, session_hash) VALUES (:pid, :sh)"),
+        {"pid": paper_id, "sh": session_hash},
+    )
+    await db.flush()
+
     return paper
+
+
+@router.get("/{paper_id}/by-authors")
+async def get_papers_by_authors(
+    paper_id: str,
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+):
+    paper = await get_paper(db, paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    author_names = [a["name"] for a in paper.get("authors", [])[:3]]
+    papers = await papers_by_authors(db, author_names, exclude_paper_id=paper_id, limit=limit)
+    return {"papers": papers}
 
 
 @router.get("/{paper_id}/similar")

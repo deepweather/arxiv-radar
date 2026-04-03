@@ -5,7 +5,7 @@ interface PaperListProps {
   papers: Paper[];
   loading?: boolean;
   onSave?: (id: string) => void;
-  onTag?: (id: string) => void;
+  onTag?: boolean;
   savedIds?: Set<string>;
   onLoadMore?: () => void;
   hasMore?: boolean;
