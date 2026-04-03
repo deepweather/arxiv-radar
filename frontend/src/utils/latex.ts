@@ -39,12 +39,12 @@ export function latexToHtml(text: string): string {
   result = result.replace(/\\}/g, "}");
   result = result.replace(/\\~/g, "&nbsp;");
   result = result.replace(/~(?!\\)/g, "&nbsp;");
-  result = result.replace(/---/g, "—");
-  result = result.replace(/--/g, "–");
-  result = result.replace(/``/g, """);
-  result = result.replace(/''/g, """);
-  result = result.replace(/`/g, "'");
-  result = result.replace(/'/g, "'");
+  result = result.replace(/---/g, "\u2014"); // em dash
+  result = result.replace(/--/g, "\u2013"); // en dash
+  result = result.replace(/``/g, "\u201C"); // left double quote
+  result = result.replace(/''/g, "\u201D"); // right double quote
+  result = result.replace(/`/g, "\u2018"); // left single quote
+  result = result.replace(/'/g, "\u2019"); // right single quote
 
   // Greek letters (common ones)
   const greekLetters: Record<string, string> = {
