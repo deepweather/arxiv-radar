@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import PaperCard from "@/components/papers/PaperCard";
 import CitationGraph from "@/components/citations/CitationGraph";
 import TagPicker from "@/components/tags/TagPicker";
+import LaTeXText from "@/components/common/LaTeXText";
 import api from "@/api/client";
 import { Paper } from "@/types";
 import { useState } from "react";
@@ -69,7 +70,7 @@ export default function PaperDetailPage() {
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold leading-tight">{paper.title}</h1>
+        <LaTeXText as="h1" text={paper.title} className="text-2xl font-bold leading-tight" />
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{authorStr}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-gray-400">{timeAgo}</span>
@@ -137,7 +138,7 @@ export default function PaperDetailPage() {
 
       <div className="prose dark:prose-invert max-w-none">
         <h2 className="text-lg font-semibold mb-2">Abstract</h2>
-        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{paper.summary}</p>
+        <LaTeXText as="p" text={paper.summary} className="text-gray-700 dark:text-gray-300 leading-relaxed" />
       </div>
 
       <div>

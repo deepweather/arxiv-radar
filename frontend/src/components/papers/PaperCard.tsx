@@ -4,6 +4,7 @@ import { Bookmark, ExternalLink, Tag as TagIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Paper } from "@/types";
 import TagPicker from "@/components/tags/TagPicker";
+import LaTeXText from "@/components/common/LaTeXText";
 
 interface PaperCardProps {
   paper: Paper;
@@ -27,7 +28,7 @@ export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProp
             to={`/paper/${paper.id}`}
             className="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-brand-700 dark:hover:text-brand-400 leading-snug line-clamp-2"
           >
-            {paper.title}
+            <LaTeXText text={paper.title} />
           </Link>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{authorStr}</p>
         </div>
@@ -70,9 +71,11 @@ export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProp
           </a>
         </div>
       </div>
-      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed">
-        {paper.summary}
-      </p>
+      <LaTeXText
+        as="p"
+        text={paper.summary}
+        className="mt-3 text-sm text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed"
+      />
       <div className="mt-3 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
         <span>{timeAgo}</span>
         {paper.categories.slice(0, 3).map((cat) => (
