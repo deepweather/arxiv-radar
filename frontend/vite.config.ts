@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ["arxivradar.com", "localhost"],
     proxy: {
       "/api": {
         target: "http://localhost:8000",
