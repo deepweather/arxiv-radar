@@ -2,16 +2,19 @@
 
 Design principles:
 - Resumable: state persisted in DB, can stop/restart anytime
-- Chunked: small batches (100-200 papers) to avoid memory/timeout issues
-- Offset-based: uses arXiv API pagination with ascending date order (oldest first)
+- Chunked: small batches to avoid memory/timeout issues
+- Date-based: uses date ranges to avoid arXiv API pagination limits
 - Rate-limited: respects arXiv API limits (3s delay between requests)
 - Idempotent: safe to run multiple times
 
 Strategy:
-- Query papers sorted by SubmittedDate ASCENDING (oldest first)
-- Use direct arXiv API with `start` parameter for reliable deep pagination
-- Store offset in metadata, track papers_processed
-- Stop when no more papers returned or reach current date
+- Query papers by date ranges (e.g., one month at a time)
+- Move forward through time from oldest to newest
+- Store cursor_date in DB, resume from last date
+- Stop when we reach 30 days ago (normal ingest handles recent)
+
+Note: arXiv API has a limit on the `start` parameter (~10000) so we MUST
+use date-based queries for large-scale backfilling.
 
 Usage:
     # From worker
@@ -36,12 +39,14 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # arXiv rate limit is ~1 request per 3 seconds
-ARXIV_PAGE_SIZE = 200
 ARXIV_DELAY_SECONDS = 3.0
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
 
-# Backfill goes back this many years max
-MAX_BACKFILL_YEARS = 15
+# Date range for each batch query (days)
+BATCH_DATE_RANGE_DAYS = 30
+
+# Start date for backfill (oldest papers to fetch)
+BACKFILL_START_DATE = datetime(2010, 1, 1, tzinfo=timezone.utc)
 
 # XML namespaces for arXiv Atom feed
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
@@ -111,16 +116,28 @@ async def init_backfill(db: AsyncSession) -> dict:
     return await get_backfill_status(db)
 
 
-async def _fetch_arxiv_page(
+async def _fetch_arxiv_by_date(
     client: httpx.AsyncClient,
-    query: str,
-    start: int,
-    max_results: int,
+    categories: list[str],
+    from_date: datetime,
+    to_date: datetime,
+    start: int = 0,
+    max_results: int = 1000,
 ) -> list[dict]:
-    """Fetch one page of results directly from arXiv API.
+    """Fetch papers from arXiv API within a date range.
     
+    Uses submittedDate range query to avoid deep pagination limits.
     Returns list of parsed paper dicts, or empty list on error.
     """
+    # Format dates as YYYYMMDDHHMMSS for arXiv API
+    from_str = from_date.strftime("%Y%m%d%H%M%S")
+    to_str = to_date.strftime("%Y%m%d%H%M%S")
+    
+    # Build query: (cat:cs.LG OR cat:cs.AI) AND submittedDate:[from TO to]
+    cat_query = " OR ".join(f"cat:{c}" for c in categories)
+    date_query = f"submittedDate:[{from_str} TO {to_str}]"
+    query = f"({cat_query}) AND {date_query}"
+    
     params = {
         "search_query": query,
         "start": start,
@@ -131,18 +148,23 @@ async def _fetch_arxiv_page(
     
     for attempt in range(5):
         try:
-            resp = await client.get(ARXIV_API_URL, params=params)
+            resp = await client.get(ARXIV_API_URL, params=params, timeout=60.0)
             
             if resp.status_code == 503:
-                # Rate limited, back off
                 wait = 10 * (attempt + 1)
                 logger.warning("arXiv rate limited (503), waiting %ds", wait)
                 await asyncio.sleep(wait)
                 continue
             
             if resp.status_code != 200:
-                logger.error("arXiv API error: %d", resp.status_code)
+                logger.error("arXiv API error: %d - %s", resp.status_code, resp.text[:200])
                 return []
+            
+            # Check for API error in response
+            if "internal error" in resp.text.lower():
+                logger.warning("arXiv API internal error, retrying in %ds", 10 * (attempt + 1))
+                await asyncio.sleep(10 * (attempt + 1))
+                continue
             
             # Parse XML response
             root = ElementTree.fromstring(resp.text)
@@ -225,21 +247,22 @@ def _parse_entry(entry: ElementTree.Element) -> dict | None:
 
 async def run_backfill_batch(
     db: AsyncSession,
-    batch_size: int = 100,
+    batch_size: int = 1000,
     dry_run: bool = False,
 ) -> dict:
-    """Run one batch of backfill using direct arXiv API calls.
+    """Run one batch of backfill using date-based arXiv API queries.
     
-    Uses direct HTTP requests with proper `start` parameter for reliable
-    deep pagination, avoiding the arxiv library's pagination quirks.
+    Uses date ranges instead of offsets to avoid arXiv API pagination limits.
+    Each batch fetches papers from a date range (default 30 days) and processes
+    them in chunks.
     
     Args:
         db: Database session
-        batch_size: Papers to fetch per batch (100-500 recommended)
+        batch_size: Max papers to fetch per API call (1000 recommended)
         dry_run: If True, don't actually insert papers
         
     Returns:
-        Dict with stats: papers_fetched, new_papers, cursor_offset, is_complete
+        Dict with stats: papers_fetched, new_papers, cursor_date, is_complete
     """
     await init_backfill(db)
     
@@ -252,25 +275,38 @@ async def run_backfill_batch(
         logger.info("Backfill already complete")
         return {"status": "complete", "papers_fetched": 0, "new_papers": 0, "is_complete": True}
     
-    extra_data = state.extra_data or {}
-    current_offset = extra_data.get("offset", 0)
+    # Get current cursor date or start from beginning
+    cursor_date = state.cursor_date or BACKFILL_START_DATE
+    
+    # Calculate date range for this batch
+    from_date = cursor_date
+    to_date = from_date + timedelta(days=BATCH_DATE_RANGE_DAYS)
     
     # Stop when we reach papers from 30 days ago (normal ingest handles recent)
     recent_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
     
-    # Build category query
+    # Check if we've completed
+    if from_date >= recent_cutoff:
+        logger.info("Backfill reached recent cutoff date, marking complete")
+        if not dry_run:
+            await _mark_complete(db, state.papers_processed)
+            await db.commit()
+        return {"status": "complete", "papers_fetched": 0, "new_papers": 0, "is_complete": True}
+    
+    # Don't go past the cutoff
+    if to_date > recent_cutoff:
+        to_date = recent_cutoff
+    
     categories = [c.strip() for c in settings.arxiv_categories.split(",")]
-    query_str = " OR ".join(f"cat:{c}" for c in categories)
     
     logger.info(
-        "Backfill: offset=%d, batch_size=%d, categories=%s", 
-        current_offset, batch_size, categories
+        "Backfill: date_range=%s to %s, categories=%s", 
+        from_date.date(), to_date.date(), categories
     )
     
     papers_fetched = 0
     new_papers = 0
-    newest_date = state.cursor_date
-    reached_recent = False
+    newest_date = cursor_date
     
     upsert_sql = text("""
         INSERT INTO papers (id, title, summary, authors, categories, pdf_url, published_at, updated_at)
@@ -286,72 +322,81 @@ async def run_backfill_batch(
         RETURNING (xmax = 0) as inserted
     """)
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        papers = await _fetch_arxiv_page(client, query_str, current_offset, batch_size)
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Fetch all papers in date range (may need multiple API calls for large ranges)
+        offset = 0
+        total_in_range = 0
         
-        if not papers:
-            logger.info("No papers returned from arXiv API")
-        
-        for paper in papers:
-            published = paper["published_at"]
+        while True:
+            papers = await _fetch_arxiv_by_date(
+                client, categories, from_date, to_date, 
+                start=offset, max_results=batch_size
+            )
             
-            # Check if we've reached recent papers
-            if published >= recent_cutoff:
-                reached_recent = True
-                logger.info("Reached recent papers (%s), stopping", published.date())
+            if not papers:
                 break
             
-            # Track newest date seen
-            if newest_date is None or published > newest_date:
-                newest_date = published
+            total_in_range += len(papers)
             
-            if not dry_run:
-                row_result = await db.execute(upsert_sql, {
-                    "id": paper["id"],
-                    "title": paper["title"],
-                    "summary": paper["summary"],
-                    "authors": json.dumps(paper["authors"]),
-                    "categories": paper["categories"],
-                    "pdf_url": paper["pdf_url"],
-                    "published_at": published,
-                    "updated_at": paper["updated_at"],
-                })
-                row = row_result.fetchone()
-                if row and row.inserted:
-                    new_papers += 1
+            for paper in papers:
+                published = paper["published_at"]
+                
+                # Track newest date seen
+                if published > newest_date:
+                    newest_date = published
+                
+                if not dry_run:
+                    row_result = await db.execute(upsert_sql, {
+                        "id": paper["id"],
+                        "title": paper["title"],
+                        "summary": paper["summary"],
+                        "authors": json.dumps(paper["authors"]),
+                        "categories": paper["categories"],
+                        "pdf_url": paper["pdf_url"],
+                        "published_at": published,
+                        "updated_at": paper["updated_at"],
+                    })
+                    row = row_result.fetchone()
+                    if row and row.inserted:
+                        new_papers += 1
+                
+                papers_fetched += 1
             
-            papers_fetched += 1
-        
-        if papers_fetched > 0 and papers_fetched % 50 == 0:
             logger.info(
-                "Backfill progress: %d papers, %d new, latest: %s", 
-                papers_fetched, new_papers, newest_date.date() if newest_date else "N/A"
+                "Backfill progress: %d papers fetched, %d new, date range %s-%s", 
+                papers_fetched, new_papers, from_date.date(), to_date.date()
             )
+            
+            # If we got fewer papers than requested, we've exhausted this date range
+            if len(papers) < batch_size:
+                break
+            
+            # Otherwise fetch next page within same date range
+            offset += len(papers)
+            await asyncio.sleep(ARXIV_DELAY_SECONDS)
     
-    # Backfill complete if: no papers returned OR reached recent papers
-    is_complete = (papers_fetched == 0 and len(papers) == 0) or reached_recent
+    # Move cursor to end of this date range
+    next_cursor = to_date
+    is_complete = next_cursor >= recent_cutoff
     
     if not dry_run:
         now = datetime.now(timezone.utc)
-        new_offset = current_offset + papers_fetched
         total_processed = state.papers_processed + papers_fetched
         
         if is_complete:
             await _mark_complete(db, total_processed)
         else:
-            new_extra_data = {**extra_data, "offset": new_offset}
             await db.execute(
                 text("""
                     UPDATE backfill_state 
                     SET cursor_date = :cursor, papers_processed = :total, 
-                        last_run_at = :now, extra_data = :meta
+                        last_run_at = :now
                     WHERE id = 'arxiv'
                 """),
                 {
-                    "cursor": newest_date, 
+                    "cursor": next_cursor, 
                     "total": total_processed, 
                     "now": now,
-                    "meta": json.dumps(new_extra_data),
                 }
             )
         
@@ -361,7 +406,7 @@ async def run_backfill_batch(
         "status": "complete" if is_complete else "in_progress",
         "papers_fetched": papers_fetched,
         "new_papers": new_papers,
-        "cursor_offset": current_offset + papers_fetched,
+        "cursor_date": next_cursor.isoformat(),
         "last_paper_date": newest_date.isoformat() if newest_date else None,
         "is_complete": is_complete,
     }

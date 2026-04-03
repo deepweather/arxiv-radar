@@ -40,8 +40,7 @@ async def cmd_backfill_status():
     print(f"Status:           {status['status']}")
     print(f"Total papers:     {status['total_papers']:,}")
     print(f"Papers processed: {status['papers_processed']:,}")
-    print(f"Cursor offset:    {status.get('cursor_offset', 0):,}")
-    print(f"Last paper date:  {status.get('last_paper_date') or 'N/A'}")
+    print(f"Cursor date:      {status.get('last_paper_date') or 'Not started (will begin from 2010-01-01)'}")
     print(f"Is complete:      {status['is_complete']}")
     print(f"Started at:       {status['started_at'] or 'N/A'}")
     print(f"Last run at:      {status['last_run_at'] or 'N/A'}")
@@ -60,7 +59,7 @@ async def cmd_backfill_run_once(batch_size: int, dry_run: bool = False):
     print(f"Status:         {result['status']}")
     print(f"Papers fetched: {result['papers_fetched']}")
     print(f"New papers:     {result['new_papers']}")
-    print(f"Cursor offset:  {result.get('cursor_offset', 0)}")
+    print(f"Cursor date:    {result.get('cursor_date', 'N/A')}")
     print(f"Last paper:     {result.get('last_paper_date') or 'N/A'}")
     print(f"Is complete:    {result['is_complete']}")
     if dry_run:
@@ -76,7 +75,8 @@ async def cmd_backfill_start(batch_size: int, max_batches: int = 0, delay_betwee
     batches_run = 0
     
     print(f"\n=== Starting Continuous Backfill ===")
-    print(f"Batch size: {batch_size}")
+    print(f"Batch size: {batch_size} papers per API call")
+    print(f"Date range per batch: 30 days")
     print(f"Max batches: {max_batches or 'unlimited'}")
     print(f"Delay between batches: {delay_between}s")
     print()
@@ -87,8 +87,7 @@ async def cmd_backfill_start(batch_size: int, max_batches: int = 0, delay_betwee
         
         batches_run += 1
         print(f"[Batch {batches_run}] Fetched {result['papers_fetched']} papers, "
-              f"{result['new_papers']} new, offset: {result.get('cursor_offset', 0)}, "
-              f"latest: {result.get('last_paper_date', 'N/A')}")
+              f"{result['new_papers']} new, cursor: {result.get('cursor_date', 'N/A')}")
         
         if result['is_complete']:
             print("\n=== Backfill Complete! ===")
