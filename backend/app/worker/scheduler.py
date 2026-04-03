@@ -89,7 +89,7 @@ async def run_startup():
     logger.info("Startup tasks complete")
 
 
-if __name__ == "__main__":
+async def main():
     scheduler = AsyncIOScheduler()
 
     scheduler.add_job(
@@ -125,6 +125,13 @@ if __name__ == "__main__":
     scheduler.start()
 
     try:
-        asyncio.get_event_loop().run_forever()
+        while True:
+            await asyncio.sleep(3600)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Worker shutting down")
+    finally:
+        scheduler.shutdown()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
