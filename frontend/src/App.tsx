@@ -1,0 +1,31 @@
+import { Routes, Route } from "react-router-dom";
+import Layout from "./components/layout/Layout";
+import HomePage from "./pages/HomePage";
+import SearchPage from "./pages/SearchPage";
+import PaperDetailPage from "./pages/PaperDetailPage";
+import TagsPage from "./pages/TagsPage";
+import CollectionsPage from "./pages/CollectionsPage";
+import CollectionDetailPage from "./pages/CollectionDetailPage";
+import TrendingPage from "./pages/TrendingPage";
+import SettingsPage from "./pages/SettingsPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/paper/:id" element={<PaperDetailPage />} />
+        <Route path="/tags" element={<TagsPage />} />
+        <Route path="/collections" element={<CollectionsPage />} />
+        <Route path="/collections/:id" element={<CollectionDetailPage />} />
+        <Route path="/trending" element={<TrendingPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+    </Routes>
+  );
+}

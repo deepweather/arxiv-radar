@@ -1,0 +1,31 @@
+# Dev overrides — auto-merged by `docker compose up`.
+# Mounts source code for hot reload. No image rebuilds needed for code changes.
+# Remove or rename this file to run production builds instead.
+
+services:
+  backend:
+    volumes:
+      - ./backend/app:/app/app
+      - model_cache:/app/model_cache
+
+  worker:
+    volumes:
+      - ./backend/app:/app/app
+      - model_cache:/app/model_cache
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5174:5173"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+  nginx:
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  frontend_node_modules:
