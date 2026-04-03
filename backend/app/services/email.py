@@ -2,6 +2,7 @@
 
 import html
 import logging
+import re
 import smtplib
 import ssl
 from email.mime.text import MIMEText
@@ -12,16 +13,32 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _html_to_plain(html_body: str) -> str:
+    """Convert HTML to plain text for email."""
+    text = re.sub(r"<br\s*/?>", "\n", html_body)
+    text = re.sub(r"</p>", "\n\n", text)
+    text = re.sub(r"</div>", "\n", text)
+    text = re.sub(r"</tr>", "\n", text)
+    text = re.sub(r"<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>([^<]+)</a>", r"\2 (\1)", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def _send_email(to: str, subject: str, html_body: str) -> bool:
     """Low-level SMTP send. Returns True on success."""
     if not settings.smtp_host:
         logger.warning("SMTP not configured, skipping email to %s", to)
         return False
 
+    plain_body = _html_to_plain(html_body)
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = settings.email_from
     msg["To"] = to
+    msg.attach(MIMEText(plain_body, "plain"))
     msg.attach(MIMEText(html_body, "html"))
 
     try:
