@@ -66,6 +66,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_IMPRINT_COMPANY: ${VITE_IMPRINT_COMPANY:-}
+        VITE_IMPRINT_REPRESENTATIVE: ${VITE_IMPRINT_REPRESENTATIVE:-}
+        VITE_IMPRINT_ADDRESS: ${VITE_IMPRINT_ADDRESS:-}
+        VITE_IMPRINT_EMAIL: ${VITE_IMPRINT_EMAIL:-}
+        VITE_IMPRINT_PHONE: ${VITE_IMPRINT_PHONE:-}
+        VITE_IMPRINT_REGISTER: ${VITE_IMPRINT_REGISTER:-}
+        VITE_IMPRINT_VAT_ID: ${VITE_IMPRINT_VAT_ID:-}
     restart: unless-stopped
     ports:
       - "5173:80"

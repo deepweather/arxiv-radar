@@ -54,6 +54,11 @@ export default function LoginPage() {
               onChange={(e) => setCompany(e.target.value)}
             />
           </div>
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           {login.isError && (
             <p className="text-sm text-red-600">
               {getHttpStatus(login.error) === 429

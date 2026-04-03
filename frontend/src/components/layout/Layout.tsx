@@ -112,6 +112,12 @@ export default function Layout() {
               {user.username}
             </div>
           )}
+          <Link
+            to="/imprint"
+            className="block px-3 py-1 text-xs text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400"
+          >
+            Imprint
+          </Link>
         </div>
       </aside>
 

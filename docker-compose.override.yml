@@ -6,6 +6,7 @@ services:
   backend:
     volumes:
       - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
       - model_cache:/app/model_cache
 
   worker:
@@ -14,8 +15,10 @@ services:
       - model_cache:/app/model_cache
 
   frontend:
+    build: !reset null
     image: node:20-alpine
     working_dir: /app
+    env_file: .env
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules

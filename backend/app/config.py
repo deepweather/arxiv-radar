@@ -25,9 +25,13 @@ class Settings(BaseSettings):
     # Email
     smtp_host: str = ""
     smtp_port: int = 587
+    smtp_use_ssl: bool = False
     smtp_user: str = ""
     smtp_password: str = ""
     email_from: str = "noreply@arxiv-radar.local"
+
+    # Frontend URL for email links
+    frontend_url: str = "http://localhost:5173"
 
     # Semantic Scholar
     semantic_scholar_api_key: str = ""

@@ -54,6 +54,10 @@ class User(Base):
     username = Column(String(80), unique=True, nullable=False, index=True)
     email = Column(String(320), unique=True, nullable=False, index=True)
     password_hash = Column(String(128), nullable=False)
+    is_email_verified = Column(Boolean, nullable=False, server_default="false")
+    email_verification_token = Column(String(128), nullable=True)
+    password_reset_token = Column(String(128), nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_active_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
