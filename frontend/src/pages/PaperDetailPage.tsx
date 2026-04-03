@@ -1,13 +1,13 @@
 import { useParams, Link } from "react-router-dom";
-import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon } from "lucide-react";
+import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon, FolderPlus, BookOpen, Network, GraduationCap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { usePaper, useSimilarPapers } from "@/hooks/usePapers";
 import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
 import { useAuthStore } from "@/stores/authStore";
 import PaperCard from "@/components/papers/PaperCard";
-import CitationGraph from "@/components/citations/CitationGraph";
 import TagPicker from "@/components/tags/TagPicker";
+import CollectionPicker from "@/components/collections/CollectionPicker";
 import LaTeXText from "@/components/common/LaTeXText";
 import api from "@/api/client";
 import { Paper } from "@/types";
@@ -30,6 +30,7 @@ export default function PaperDetailPage() {
   const unsave = useUnsavePaper();
   const { data: savedData } = useSavedPapers();
   const [showTagPicker, setShowTagPicker] = useState(false);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
 
   const savedIds = new Set<string>(
     (savedData?.papers ?? []).map((p: Paper) => p.id),
@@ -132,6 +133,18 @@ export default function PaperDetailPage() {
                 <TagPicker paperId={paper.id} onClose={() => setShowTagPicker(false)} />
               )}
             </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowCollectionPicker(!showCollectionPicker)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <FolderPlus size={14} />
+                Add to Collection
+              </button>
+              {showCollectionPicker && (
+                <CollectionPicker paperId={paper.id} onClose={() => setShowCollectionPicker(false)} />
+              )}
+            </div>
           </>
         )}
       </div>
@@ -142,8 +155,39 @@ export default function PaperDetailPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold mb-4">Citations</h2>
-        <CitationGraph paperId={paper.id} />
+        <h2 className="text-lg font-semibold mb-4">Citations & References</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          View citations and references on external services:
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <a
+            href={`https://www.semanticscholar.org/search?q=arXiv:${paper.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <BookOpen size={14} />
+            Semantic Scholar
+          </a>
+          <a
+            href={`https://scholar.google.com/scholar?q=arXiv:${paper.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <GraduationCap size={14} />
+            Google Scholar
+          </a>
+          <a
+            href={`https://www.connectedpapers.com/main/${paper.id}/arxiv`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <Network size={14} />
+            Connected Papers
+          </a>
+        </div>
       </div>
 
       {similar && similar.papers.length > 0 && (

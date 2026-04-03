@@ -76,8 +76,22 @@ export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProp
         text={paper.summary}
         className="mt-3 text-sm text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed"
       />
-      <div className="mt-3 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+      <div className="mt-3 flex items-center flex-wrap gap-2 text-xs text-gray-400 dark:text-gray-500">
         <span>{timeAgo}</span>
+        {paper.user_tags && paper.user_tags.length > 0 && (
+          <>
+            {paper.user_tags.map((tag) => (
+              <Link
+                key={tag.id}
+                to={`/tags`}
+                className="px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 font-medium flex items-center gap-1"
+              >
+                <TagIcon size={10} />
+                {tag.name}
+              </Link>
+            ))}
+          </>
+        )}
         {paper.categories.slice(0, 3).map((cat) => (
           <Link
             key={cat}
@@ -93,6 +107,24 @@ export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProp
           </span>
         )}
       </div>
+      {paper.similar_to && paper.similar_to.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Similar to your tagged:{" "}
+            {paper.similar_to.slice(0, 2).map((sp, i) => (
+              <span key={sp.id}>
+                {i > 0 && ", "}
+                <Link
+                  to={`/paper/${sp.id}`}
+                  className="text-brand-600 dark:text-brand-400 hover:underline"
+                >
+                  {sp.title.length > 50 ? sp.title.slice(0, 50) + "..." : sp.title}
+                </Link>
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
     </article>
   );
 }

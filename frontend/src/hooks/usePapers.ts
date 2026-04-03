@@ -12,6 +12,8 @@ export function usePapers(params?: {
   days?: number;
   categories?: string;
   limit?: number;
+  sort?: string;
+  excludeTagged?: boolean;
 }) {
   const limit = params?.limit ?? 25;
   return useInfiniteQuery<PapersResponse>({
@@ -21,6 +23,8 @@ export function usePapers(params?: {
       if (params?.q) searchParams.set("q", params.q);
       if (params?.days) searchParams.set("days", String(params.days));
       if (params?.categories) searchParams.set("categories", params.categories);
+      if (params?.sort) searchParams.set("sort", params.sort);
+      if (params?.excludeTagged) searchParams.set("exclude_tagged", "true");
       searchParams.set("limit", String(limit));
       searchParams.set("offset", String(pageParam));
       const { data } = await api.get(`/papers?${searchParams}`);

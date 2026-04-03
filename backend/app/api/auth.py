@@ -47,6 +47,8 @@ class UserResponse(BaseModel):
     id: str
     email: str
     is_email_verified: bool
+    digest_enabled: bool
+    digest_frequency: str
 
     model_config = {"from_attributes": True}
 
@@ -70,6 +72,16 @@ class ResendVerificationRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     detail: str
+
+
+class DigestPreferencesRequest(BaseModel):
+    enabled: bool
+    frequency: str = "daily"
+
+
+class DigestPreferencesResponse(BaseModel):
+    digest_enabled: bool
+    digest_frequency: str
 
 
 # --------------- Helpers ---------------
@@ -163,6 +175,9 @@ async def login(
     if user is None or not _verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    if not user.is_email_verified:
+        raise HTTPException(status_code=403, detail="Email not verified")
+
     access_token = _create_token(str(user.id), "access")
     refresh_token = _create_token(str(user.id), "refresh")
     _set_refresh_cookie(response, refresh_token)
@@ -202,6 +217,37 @@ async def me(user: User = Depends(get_current_user)):
         id=str(user.id),
         email=user.email,
         is_email_verified=user.is_email_verified,
+        digest_enabled=user.digest_enabled,
+        digest_frequency=user.digest_frequency,
+    )
+
+
+# --------------- Digest preferences ---------------
+
+@router.get("/digest-preferences", response_model=DigestPreferencesResponse)
+async def get_digest_preferences(user: User = Depends(get_current_user)):
+    return DigestPreferencesResponse(
+        digest_enabled=user.digest_enabled,
+        digest_frequency=user.digest_frequency,
+    )
+
+
+@router.patch("/digest-preferences", response_model=DigestPreferencesResponse)
+async def update_digest_preferences(
+    body: DigestPreferencesRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if body.frequency not in ("daily", "weekly"):
+        raise HTTPException(status_code=400, detail="Frequency must be 'daily' or 'weekly'")
+    
+    user.digest_enabled = body.enabled
+    user.digest_frequency = body.frequency
+    await db.flush()
+    
+    return DigestPreferencesResponse(
+        digest_enabled=user.digest_enabled,
+        digest_frequency=user.digest_frequency,
     )
 
 

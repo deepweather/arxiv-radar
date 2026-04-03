@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Moon, Sun, Bell, Trash2, Plus, LogOut } from "lucide-react";
+import { Moon, Sun, Bell, Mail, Trash2, Plus, LogOut } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -16,6 +16,11 @@ interface Webhook {
   enabled: boolean;
 }
 
+interface DigestPreferences {
+  digest_enabled: boolean;
+  digest_frequency: string;
+}
+
 export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const { darkMode, toggleDarkMode } = useUIStore();
@@ -26,6 +31,8 @@ export default function SettingsPage() {
   const [platform, setPlatform] = useState("slack");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookTagId, setWebhookTagId] = useState<string>("");
+  const [digestEnabled, setDigestEnabled] = useState(false);
+  const [digestFrequency, setDigestFrequency] = useState("daily");
 
   const { data: webhooks } = useQuery<Webhook[]>({
     queryKey: ["webhooks"],
@@ -34,6 +41,33 @@ export default function SettingsPage() {
       return data;
     },
     enabled: !!user,
+  });
+
+  const { data: digestPrefs } = useQuery<DigestPreferences>({
+    queryKey: ["digest-preferences"],
+    queryFn: async () => {
+      const { data } = await api.get("/auth/digest-preferences");
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (digestPrefs) {
+      setDigestEnabled(digestPrefs.digest_enabled);
+      setDigestFrequency(digestPrefs.digest_frequency);
+    }
+  }, [digestPrefs]);
+
+  const updateDigest = useMutation({
+    mutationFn: async (prefs: { enabled: boolean; frequency: string }) => {
+      const { data } = await api.patch("/auth/digest-preferences", prefs);
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["digest-preferences"] });
+      qc.invalidateQueries({ queryKey: ["auth", "me"] });
+    },
   });
 
   const createWebhook = useMutation({
@@ -117,6 +151,62 @@ export default function SettingsPage() {
               />
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Email Digest */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Mail size={18} />
+          Email Digest
+        </h2>
+        <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Recommendation digest</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Receive personalized paper recommendations via email
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const newEnabled = !digestEnabled;
+                setDigestEnabled(newEnabled);
+                updateDigest.mutate({ enabled: newEnabled, frequency: digestFrequency });
+              }}
+              role="switch"
+              aria-checked={digestEnabled}
+              aria-label="Toggle email digest"
+              className={`relative w-11 h-6 rounded-full transition-colors ${
+                digestEnabled ? "bg-brand-600" : "bg-gray-300"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                  digestEnabled ? "translate-x-5" : ""
+                }`}
+              />
+            </button>
+          </div>
+          {digestEnabled && (
+            <div className="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <label htmlFor="digestFrequency" className="text-sm text-gray-600 dark:text-gray-400">
+                Frequency:
+              </label>
+              <select
+                id="digestFrequency"
+                value={digestFrequency}
+                onChange={(e) => {
+                  setDigestFrequency(e.target.value);
+                  updateDigest.mutate({ enabled: digestEnabled, frequency: e.target.value });
+                }}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly (Sundays)</option>
+              </select>
+            </div>
+          )}
         </div>
       </section>
 

@@ -5,6 +5,7 @@ Two entry points:
 - fetch_citations_batch(db, batch_size): background worker, fetches from S2 and persists
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -50,31 +51,66 @@ async def ensure_queued(db: AsyncSession, paper_id: str) -> None:
 async def fetch_citations_batch(db: AsyncSession, batch_size: int = 50) -> int:
     """Fetch citations for a batch of papers from Semantic Scholar.
     
-    Processes papers in order: pending first, then stale fetched, then retries.
+    Priority order (smart scheduling):
+    1. Saved papers (user explicitly saved them - highest value)
+    2. Recently viewed papers (user interest signal)
+    3. Pending papers sorted by publish date (newer first)
+    4. Stale fetched papers (need refresh)
+    5. Retry failed papers
+    
     Returns number of papers processed.
     """
     now = datetime.now(timezone.utc)
     stale_cutoff = now - timedelta(days=REFRESH_AFTER_DAYS)
+    recent_views_cutoff = now - timedelta(days=7)
 
+    # Smart priority query:
+    # - saved_priority: papers that are saved by users
+    # - viewed_priority: papers viewed in last 7 days
+    # - status_priority: pending > not_found > error > stale
+    # - recency: newer papers first within each priority tier
     result = await db.execute(
         text("""
-            SELECT paper_id FROM citation_cache
-            WHERE 
-                (status = 'pending')
-                OR (status = 'fetched' AND fetched_at < :stale)
-                OR (status IN ('not_found', 'error') AND error_count < :max_retries 
-                    AND (retry_after IS NULL OR retry_after < :now))
+            WITH eligible AS (
+                SELECT 
+                    cc.paper_id,
+                    cc.status,
+                    p.published_at,
+                    CASE WHEN EXISTS (
+                        SELECT 1 FROM saved_papers sp WHERE sp.paper_id = cc.paper_id
+                    ) THEN 0 ELSE 1 END as saved_priority,
+                    CASE WHEN EXISTS (
+                        SELECT 1 FROM paper_views pv 
+                        WHERE pv.paper_id = cc.paper_id AND pv.viewed_at > :recent_views
+                    ) THEN 0 ELSE 1 END as viewed_priority
+                FROM citation_cache cc
+                JOIN papers p ON p.id = cc.paper_id
+                WHERE 
+                    (cc.status = 'pending')
+                    OR (cc.status = 'fetched' AND cc.fetched_at < :stale)
+                    OR (cc.status IN ('not_found', 'error') AND cc.error_count < :max_retries 
+                        AND (cc.retry_after IS NULL OR cc.retry_after < :now))
+            )
+            SELECT paper_id FROM eligible
             ORDER BY 
+                saved_priority,
+                viewed_priority,
                 CASE status 
                     WHEN 'pending' THEN 0 
                     WHEN 'not_found' THEN 1 
                     WHEN 'error' THEN 2 
                     ELSE 3 
                 END,
-                paper_id ASC
+                published_at DESC NULLS LAST
             LIMIT :limit
         """),
-        {"stale": stale_cutoff, "now": now, "max_retries": MAX_RETRIES, "limit": batch_size},
+        {
+            "stale": stale_cutoff, 
+            "now": now, 
+            "max_retries": MAX_RETRIES, 
+            "limit": batch_size,
+            "recent_views": recent_views_cutoff,
+        },
     )
     paper_ids = [row.paper_id for row in result.fetchall()]
 
@@ -139,7 +175,6 @@ async def fetch_citations_batch(db: AsyncSession, batch_size: int = 50) -> int:
                     {"pid": paper_id, "retry": now + timedelta(days=7)},
                 )
 
-            import asyncio
             await asyncio.sleep(FETCH_DELAY_SECONDS)
 
     await db.commit()
@@ -159,6 +194,9 @@ async def _fetch_one(client: httpx.AsyncClient, arxiv_id: str) -> dict | str | N
         return "rate_limited"
     if refs_resp.status_code == 404:
         return None
+
+    # Delay between API calls to respect rate limits
+    await asyncio.sleep(FETCH_DELAY_SECONDS)
 
     cites_resp = await client.get(
         f"{paper_url}/citations",

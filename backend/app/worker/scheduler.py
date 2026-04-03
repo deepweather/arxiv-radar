@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -14,6 +15,15 @@ logger = logging.getLogger(__name__)
 _engine = None
 _session_factory = None
 _job_lock: asyncio.Lock | None = None
+
+# Backfill config from env
+BACKFILL_ENABLED = os.getenv("BACKFILL_ENABLED", "false").lower() == "true"
+BACKFILL_BATCH_SIZE = int(os.getenv("BACKFILL_BATCH_SIZE", "100"))
+BACKFILL_INTERVAL_MINUTES = int(os.getenv("BACKFILL_INTERVAL_MINUTES", "30"))
+
+# Digest email config from env
+DIGEST_ENABLED = os.getenv("DIGEST_ENABLED", "false").lower() == "true"
+DIGEST_HOUR_UTC = int(os.getenv("DIGEST_HOUR_UTC", "8"))
 
 
 def _get_job_lock() -> asyncio.Lock:
@@ -81,11 +91,81 @@ async def run_citation_fetch():
                 logger.exception("Citation fetch failed")
 
 
+async def run_backfill():
+    """Run one batch of historical paper backfill."""
+    from app.services.backfill import run_backfill_batch, get_backfill_status
+
+    async with _get_job_lock():
+        factory = _get_session_factory()
+
+        async with factory() as db:
+            try:
+                status = await get_backfill_status(db)
+                if status.get("is_complete"):
+                    logger.info("Backfill already complete, skipping")
+                    return
+                
+                result = await run_backfill_batch(db, batch_size=BACKFILL_BATCH_SIZE)
+                logger.info(
+                    "Backfill batch: fetched %d papers, %d new, latest: %s",
+                    result["papers_fetched"],
+                    result["new_papers"],
+                    result.get("last_paper_date", "N/A"),
+                )
+                
+                if result["is_complete"]:
+                    logger.info("Backfill complete!")
+            except Exception:
+                logger.exception("Backfill failed")
+
+
+async def run_email_digests():
+    """Send email digests to users who have opted in."""
+    from datetime import datetime, timezone
+    from sqlalchemy import select
+    from app.db.models import User
+    from app.services.recommender import recommend_for_user
+    from app.services.email import send_digest_email
+    
+    async with _get_job_lock():
+        factory = _get_session_factory()
+        
+        async with factory() as db:
+            try:
+                today = datetime.now(timezone.utc)
+                is_sunday = today.weekday() == 6
+                
+                result = await db.execute(
+                    select(User).where(
+                        User.digest_enabled == True,
+                        User.is_email_verified == True,
+                    )
+                )
+                users = result.scalars().all()
+                
+                sent_count = 0
+                for user in users:
+                    if user.digest_frequency == "weekly" and not is_sunday:
+                        continue
+                    
+                    try:
+                        papers = await recommend_for_user(db, str(user.id), limit=20, days=7)
+                        if papers:
+                            if send_digest_email(user.email, papers):
+                                sent_count += 1
+                    except Exception:
+                        logger.exception("Failed to send digest to %s", user.email)
+                
+                logger.info("Email digests sent: %d", sent_count)
+            except Exception:
+                logger.exception("Email digest job failed")
+
+
 async def run_startup():
     """Run all startup tasks sequentially to avoid connection pool conflicts."""
     logger.info("Running startup tasks...")
     await run_ingest_and_embed()
-    await run_citation_fetch()
+    # Citation fetching disabled - using external links instead
     logger.info("Startup tasks complete")
 
 
@@ -101,14 +181,48 @@ async def main():
         coalesce=True,
     )
 
-    scheduler.add_job(
-        run_citation_fetch,
-        "interval",
-        minutes=10,
-        id="citation_fetch",
-        max_instances=1,
-        coalesce=True,
-    )
+    # Citation fetching disabled - using external links instead (Semantic Scholar, Google Scholar)
+    # scheduler.add_job(
+    #     run_citation_fetch,
+    #     "interval",
+    #     minutes=10,
+    #     id="citation_fetch",
+    #     max_instances=1,
+    #     coalesce=True,
+    # )
+
+    # Optional backfill job - only if enabled via env
+    if BACKFILL_ENABLED:
+        scheduler.add_job(
+            run_backfill,
+            "interval",
+            minutes=BACKFILL_INTERVAL_MINUTES,
+            id="backfill",
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.info(
+            "Backfill ENABLED — batch_size=%d, interval=%d minutes",
+            BACKFILL_BATCH_SIZE,
+            BACKFILL_INTERVAL_MINUTES,
+        )
+    else:
+        logger.info("Backfill disabled (set BACKFILL_ENABLED=true to enable)")
+    
+    # Email digest job - daily at configured hour UTC
+    if DIGEST_ENABLED:
+        scheduler.add_job(
+            run_email_digests,
+            "cron",
+            hour=DIGEST_HOUR_UTC,
+            minute=0,
+            id="email_digests",
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.info("Email digests ENABLED — daily at %d:00 UTC", DIGEST_HOUR_UTC)
+    else:
+        logger.info("Email digests disabled (set DIGEST_ENABLED=true to enable)")
 
     scheduler.add_job(
         run_startup,
@@ -117,7 +231,7 @@ async def main():
     )
 
     logger.info(
-        "Worker started — ingest every %d minutes, citation fetch every 10 minutes, categories: %s",
+        "Worker started — ingest every %d minutes, categories: %s",
         settings.arxiv_ingest_interval_minutes,
         settings.arxiv_categories,
     )

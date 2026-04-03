@@ -1,3 +1,14 @@
+export interface SimilarPaper {
+  id: string;
+  title: string;
+  similarity: number;
+}
+
+export interface UserTag {
+  id: number;
+  name: string;
+}
+
 export interface Paper {
   id: string;
   title: string;
@@ -9,6 +20,8 @@ export interface Paper {
   updated_at: string;
   score?: number;
   similarity?: number;
+  similar_to?: SimilarPaper[];
+  user_tags?: UserTag[];
 }
 
 export interface Tag {

@@ -9,6 +9,10 @@ export default function SearchBar() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setQuery(searchParams.get("q") || "");
+  }, [searchParams]);
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
         e.preventDefault();

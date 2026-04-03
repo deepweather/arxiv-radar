@@ -1,4 +1,5 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   Search,
@@ -11,9 +12,13 @@ import {
   Menu,
   X,
   LogIn,
+  ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useLogout } from "@/hooks/useAuth";
+import SearchBar from "@/components/search/SearchBar";
 
 const NAV_ITEMS = [
   { to: "/", icon: Home, label: "Home" },
@@ -26,8 +31,11 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { darkMode, toggleDarkMode, sidebarOpen, toggleSidebar } = useUIStore();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const logout = useLogout();
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -37,6 +45,13 @@ export default function Layout() {
           arxiv radar
         </Link>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/search")}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Search"
+          >
+            <Search size={18} />
+          </button>
           <button
             onClick={toggleDarkMode}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -64,6 +79,10 @@ export default function Layout() {
           <Link to="/" className="text-xl font-bold text-brand-700 dark:text-brand-400">
             arxiv radar
           </Link>
+        </div>
+
+        <div className="px-3 pb-2">
+          <SearchBar />
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -105,11 +124,43 @@ export default function Layout() {
             </Link>
           )}
           {user && (
-            <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-500 dark:text-gray-500">
-              <div className="w-7 h-7 rounded-full bg-brand-200 dark:bg-brand-800 flex items-center justify-center text-xs font-bold text-brand-800 dark:text-brand-200">
-                {user.email[0].toUpperCase()}
-              </div>
-              {user.email.split("@")[0]}
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-3 px-3 py-2.5 w-full text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+              >
+                <div className="w-7 h-7 rounded-full bg-brand-200 dark:bg-brand-800 flex items-center justify-center text-xs font-bold text-brand-800 dark:text-brand-200">
+                  {user.email[0].toUpperCase()}
+                </div>
+                <span className="flex-1 text-left truncate">{user.email.split("@")[0]}</span>
+                <ChevronDown size={14} className={`transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+              {userMenuOpen && (
+                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                  <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.email}</p>
+                  </div>
+                  <Link
+                    to="/settings"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Settings size={16} />
+                    Settings
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout.mutate();
+                      setUserMenuOpen(false);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 w-full text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                  >
+                    <LogOut size={16} />
+                    Sign out
+                  </button>
+                </div>
+              )}
             </div>
           )}
           <Link

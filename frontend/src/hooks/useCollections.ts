@@ -73,3 +73,17 @@ export function useSavedPapers() {
     },
   });
 }
+
+export function useAddToCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ collectionId, paperId, note }: { collectionId: string; paperId: string; note?: string }) => {
+      const { data } = await api.post(`/collections/${collectionId}/papers`, { paper_id: paperId, note: note ?? "" });
+      return data;
+    },
+    onSuccess: (_, { collectionId }) => {
+      qc.invalidateQueries({ queryKey: ["collections"] });
+      qc.invalidateQueries({ queryKey: ["collections", collectionId] });
+    },
+  });
+}

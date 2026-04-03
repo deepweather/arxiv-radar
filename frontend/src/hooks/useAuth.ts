@@ -103,3 +103,12 @@ export function useLogout() {
     },
   });
 }
+
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const { data } = await api.post("/auth/resend-verification", { email });
+      return data;
+    },
+  });
+}

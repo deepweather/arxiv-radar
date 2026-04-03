@@ -4,6 +4,8 @@ export interface User {
   id: string;
   email: string;
   is_email_verified: boolean;
+  digest_enabled: boolean;
+  digest_frequency: string;
 }
 
 interface AuthState {

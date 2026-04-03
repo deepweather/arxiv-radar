@@ -59,6 +59,8 @@ class User(Base):
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_active_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    digest_enabled = Column(Boolean, nullable=False, server_default="false")
+    digest_frequency = Column(String(20), nullable=False, server_default="daily")
 
     tags = relationship("Tag", back_populates="user", cascade="all, delete-orphan")
     collections = relationship("Collection", back_populates="user", cascade="all, delete-orphan")
@@ -171,3 +173,15 @@ class PaperView(Base):
     __table_args__ = (
         Index("ix_paper_views_paper_viewed", "paper_id", "viewed_at"),
     )
+
+
+class BackfillState(Base):
+    __tablename__ = "backfill_state"
+
+    id = Column(String(50), primary_key=True)
+    cursor_date = Column(DateTime(timezone=True), nullable=True)
+    is_complete = Column(Boolean, nullable=False, server_default="false")
+    papers_processed = Column(Integer, nullable=False, server_default="0")
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    extra_data = Column(JSONB, nullable=False, server_default="{}")

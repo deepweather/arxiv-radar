@@ -17,10 +17,15 @@ async def hybrid_search(
     offset: int = 0,
     days: int | None = None,
     categories: list[str] | None = None,
+    sort: str | None = None,
+    user_id: str | None = None,
 ) -> list[dict]:
     """
     Merge semantic vector search and full-text search results
     using Reciprocal Rank Fusion (RRF).
+    
+    sort options: relevance (default), newest, oldest
+    user_id: if provided, excludes papers the user has tagged
     """
     time_filter = ""
     params: dict = {"limit": limit * 3}
@@ -34,7 +39,16 @@ async def hybrid_search(
         cat_filter = "AND categories && :cats"
         params["cats"] = categories
 
-    base_where = f"1=1 {time_filter} {cat_filter}"
+    exclude_tagged_filter = ""
+    if user_id:
+        exclude_tagged_filter = """AND id NOT IN (
+            SELECT pt.paper_id FROM paper_tags pt
+            JOIN tags t ON t.id = pt.tag_id
+            WHERE t.user_id = CAST(:user_id AS uuid)
+        )"""
+        params["user_id"] = user_id
+
+    base_where = f"1=1 {time_filter} {cat_filter} {exclude_tagged_filter}"
 
     model = _get_model()
     query_embedding = model.encode([query], normalize_embeddings=True)[0]
@@ -75,7 +89,13 @@ async def hybrid_search(
         if row.id not in paper_data:
             paper_data[row.id] = paper_row_to_dict(row)
 
-    sorted_ids = sorted(scores.keys(), key=lambda pid: scores[pid], reverse=True)
+    if sort == "newest":
+        sorted_ids = sorted(paper_data.keys(), key=lambda pid: paper_data[pid].get("published_at") or "", reverse=True)
+    elif sort == "oldest":
+        sorted_ids = sorted(paper_data.keys(), key=lambda pid: paper_data[pid].get("published_at") or "")
+    else:
+        sorted_ids = sorted(scores.keys(), key=lambda pid: scores[pid], reverse=True)
+
     results = []
     for pid in sorted_ids[offset : offset + limit]:
         entry = paper_data[pid]
@@ -91,8 +111,13 @@ async def list_papers(
     offset: int = 0,
     days: int | None = None,
     categories: list[str] | None = None,
+    sort: str | None = None,
+    user_id: str | None = None,
 ) -> list[dict]:
-    """List papers ordered by recency."""
+    """List papers ordered by recency (default) or specified sort order.
+    
+    user_id: if provided, excludes papers the user has tagged
+    """
     params: dict = {"limit": limit, "offset": offset}
     filters = []
 
@@ -102,14 +127,29 @@ async def list_papers(
     if categories:
         filters.append("categories && :cats")
         params["cats"] = categories
+    if user_id:
+        filters.append("""id NOT IN (
+            SELECT pt.paper_id FROM paper_tags pt
+            JOIN tags t ON t.id = pt.tag_id
+            WHERE t.user_id = CAST(:user_id AS uuid)
+        )""")
+        params["user_id"] = user_id
 
     where = " AND ".join(filters) if filters else "1=1"
+    
+    order_by = "published_at DESC"
+    if sort == "oldest":
+        order_by = "published_at ASC"
+    elif sort == "newest":
+        order_by = "published_at DESC"
+    elif sort == "random":
+        order_by = "RANDOM()"
 
     sql = text(f"""
         SELECT id, title, summary, authors, categories, pdf_url, published_at, updated_at
         FROM papers
         WHERE {where}
-        ORDER BY published_at DESC
+        ORDER BY {order_by}
         LIMIT :limit OFFSET :offset
     """)
     result = await db.execute(sql, params)

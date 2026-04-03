@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { useLogin } from "@/hooks/useAuth";
+import { useLogin, useResendVerification } from "@/hooks/useAuth";
 import { getHttpStatus } from "@/api/errors";
 
 export default function LoginPage() {
@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [company, setCompany] = useState("");
   const loadedAt = useRef(Date.now() / 1000);
   const login = useLogin();
+  const resend = useResendVerification();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,11 +61,27 @@ export default function LoginPage() {
             </Link>
           </div>
           {login.isError && (
-            <p className="text-sm text-red-600">
-              {getHttpStatus(login.error) === 429
-                ? "Too many attempts. Please wait a moment."
-                : "Invalid credentials. Please try again."}
-            </p>
+            <div className="text-sm">
+              {getHttpStatus(login.error) === 429 ? (
+                <p className="text-red-600">Too many attempts. Please wait a moment.</p>
+              ) : getHttpStatus(login.error) === 403 ? (
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+                  <p className="text-amber-800 dark:text-amber-200">
+                    Please verify your email before signing in.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => resend.mutate(email)}
+                    disabled={resend.isPending || resend.isSuccess}
+                    className="mt-2 text-brand-600 dark:text-brand-400 hover:underline disabled:opacity-50"
+                  >
+                    {resend.isPending ? "Sending..." : resend.isSuccess ? "Verification email sent!" : "Resend verification email"}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-red-600">Invalid credentials. Please try again.</p>
+              )}
+            </div>
           )}
           <button
             type="submit"
