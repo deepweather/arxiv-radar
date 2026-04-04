@@ -23,11 +23,17 @@ def _get_model():
     return _model
 
 
-async def compute_embeddings(db: AsyncSession, batch_size: int = 128) -> int:
-    """Compute embeddings for papers that don't have them yet. Returns count of papers embedded."""
+async def compute_embeddings(db: AsyncSession, batch_size: int = 128, max_papers: int = 0) -> int:
+    """Compute embeddings for papers that don't have them yet. Returns count of papers embedded.
+    
+    Args:
+        batch_size: papers per encode() call (GPU/CPU chunk)
+        max_papers: total papers to process (0 = all pending)
+    """
+    limit = max_papers if max_papers > 0 else 100_000
     result = await db.execute(
         text("SELECT id, title, summary FROM papers WHERE embedding IS NULL ORDER BY published_at DESC LIMIT :limit"),
-        {"limit": batch_size * 10},
+        {"limit": limit},
     )
     rows = result.fetchall()
     if not rows:
