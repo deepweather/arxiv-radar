@@ -43,7 +43,7 @@ def _get_session_factory():
 
 async def run_ingest_and_embed():
     from app.services.arxiv_ingest import ingest_papers
-    from app.services.embeddings import compute_embeddings
+    from app.services.embeddings import compute_embeddings, ensure_hnsw_index
 
     async with _get_job_lock():
         factory = _get_session_factory()
@@ -61,6 +61,12 @@ async def run_ingest_and_embed():
                 logger.info("Embedding finished: %d papers embedded", count)
             except Exception:
                 logger.exception("Embedding failed")
+
+        async with factory() as db:
+            try:
+                await ensure_hnsw_index(db)
+            except Exception:
+                logger.exception("HNSW index creation failed")
 
 
 async def run_citation_fetch():

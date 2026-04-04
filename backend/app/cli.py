@@ -122,14 +122,27 @@ async def cmd_backfill_reset():
 
 
 async def cmd_embed_pending():
-    """Generate embeddings for papers without them."""
-    from app.services.embeddings import compute_embeddings
+    """Generate embeddings for all papers without them, looping until done."""
+    from app.services.embeddings import compute_embeddings, ensure_hnsw_index
     
     factory = get_session_factory()
-    async with factory() as db:
-        count = await compute_embeddings(db)
+    total = 0
+    batch_num = 0
     
-    print(f"Embedded {count} papers")
+    while True:
+        batch_num += 1
+        async with factory() as db:
+            count = await compute_embeddings(db, batch_size=128, max_papers=50_000)
+        total += count
+        print(f"[Batch {batch_num}] Embedded {count} papers (total: {total})")
+        if count == 0:
+            break
+    
+    print("Creating HNSW index...")
+    async with factory() as db:
+        await ensure_hnsw_index(db)
+    
+    print(f"Done! Total embedded: {total}")
 
 
 def main():

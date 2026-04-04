@@ -43,32 +43,33 @@ async def compute_embeddings(db: AsyncSession, batch_size: int = 128, max_papers
     logger.info("Computing embeddings for %d papers", len(rows))
     model = _get_model()
 
+    update_sql = text("UPDATE papers SET embedding = :emb WHERE id = :id")
     total = 0
     for i in range(0, len(rows), batch_size):
         chunk = rows[i : i + batch_size]
         texts = [f"{r.title} {r.summary}" for r in chunk]
         embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
 
-        update_sql = text("UPDATE papers SET embedding = :emb WHERE id = :id")
-        params = [
-            {"id": r.id, "emb": str(emb.tolist())}
-            for r, emb in zip(chunk, embeddings)
-        ]
-        for p in params:
-            await db.execute(update_sql, p)
+        for r, emb in zip(chunk, embeddings):
+            await db.execute(update_sql, {"id": r.id, "emb": str(emb.tolist())})
 
         total += len(chunk)
+        if total % (batch_size * 4) == 0:
+            await db.commit()
         logger.info("Embedded %d/%d papers", total, len(rows))
 
     await db.commit()
+    logger.info("Embedding complete: %d papers processed", total)
+    return total
 
-    # Create HNSW index if it doesn't exist (idempotent)
+
+async def ensure_hnsw_index(db: AsyncSession) -> None:
+    """Create the HNSW index if it doesn't exist. Call after bulk embedding."""
+    logger.info("Creating HNSW index (this may take a few minutes)...")
     await db.execute(text(
         f"CREATE INDEX IF NOT EXISTS ix_papers_embedding_hnsw "
         f"ON papers USING hnsw (embedding vector_cosine_ops) "
         f"WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION})"
     ))
     await db.commit()
-
-    logger.info("Embedding complete: %d papers processed", total)
-    return total
+    logger.info("HNSW index ready")
