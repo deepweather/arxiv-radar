@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Trash2, ChevronRight } from "lucide-react";
 import { useTags, useCreateTag, useDeleteTag, useTagPapers } from "@/hooks/useTags";
 import { useRecommendations } from "@/hooks/usePapers";
 import PaperList from "@/components/papers/PaperList";
 import { useAuthStore } from "@/stores/authStore";
+
+const PAGE_SIZE = 10;
 
 export default function TagsPage() {
   const user = useAuthStore((s) => s.user);
@@ -13,8 +15,15 @@ export default function TagsPage() {
   const deleteTag = useDeleteTag();
   const [newTag, setNewTag] = useState("");
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { data: tagPapers } = useTagPapers(selectedTagId);
   const { data: recs } = useRecommendations("tag", selectedTagId ?? undefined);
+
+  const visibleTagPapers = useMemo(
+    () => (tagPapers?.papers ?? []).slice(0, visibleCount),
+    [tagPapers, visibleCount],
+  );
+  const hasMoreTagPapers = (tagPapers?.papers.length ?? 0) > visibleCount;
 
   if (!user) {
     return (
@@ -75,7 +84,10 @@ export default function TagsPage() {
                     ? "border-brand-400 bg-brand-50 dark:bg-brand-950 dark:border-brand-700"
                     : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-brand-300"
                 }`}
-                onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)}
+                onClick={() => {
+                  setSelectedTagId(selectedTagId === tag.id ? null : tag.id);
+                  setVisibleCount(PAGE_SIZE);
+                }}
               >
                 <div>
                   <span className="font-medium">{tag.name}</span>
@@ -108,10 +120,17 @@ export default function TagsPage() {
 
       {selectedTagId && tagPapers && tagPapers.papers.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold mb-3">
+          <h2 className="text-lg font-semibold mb-1">
             Papers in this tag
           </h2>
-          <PaperList papers={tagPapers.papers} />
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            {tagPapers.papers.length} paper{tagPapers.papers.length !== 1 ? "s" : ""}
+          </p>
+          <PaperList
+            papers={visibleTagPapers}
+            hasMore={hasMoreTagPapers}
+            onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
+          />
         </div>
       )}
 
