@@ -143,8 +143,8 @@ async def run_email_digests():
                 
                 result = await db.execute(
                     select(User).where(
-                        User.digest_enabled == True,
-                        User.is_email_verified == True,
+                        User.digest_enabled == True,  # noqa: E712
+                        User.is_email_verified == True,  # noqa: E712
                     )
                 )
                 users = result.scalars().all()

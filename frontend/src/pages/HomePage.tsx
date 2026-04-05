@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { EyeOff } from "lucide-react";
 import { usePapers, useRecommendations } from "@/hooks/usePapers";
 import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
@@ -65,6 +66,9 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>arxiv radar — AI Paper Discovery</title>
+      </Helmet>
       <div>
         <h1 className="text-2xl font-bold mb-1">{getTitle()}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">{getSubtitle()}</p>

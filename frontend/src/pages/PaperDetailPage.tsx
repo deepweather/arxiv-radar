@@ -1,7 +1,8 @@
 import { useParams, Link } from "react-router-dom";
-import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon, FolderPlus, BookOpen, Network, GraduationCap } from "lucide-react";
+import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon, FolderPlus, BookOpen, GraduationCap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
 import { usePaper, useSimilarPapers } from "@/hooks/usePapers";
 import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
 import { useAuthStore } from "@/stores/authStore";
@@ -59,9 +60,23 @@ export default function PaperDetailPage() {
   const timeAgo = paper.published_at
     ? formatDistanceToNow(new Date(paper.published_at), { addSuffix: true })
     : "";
+  const metaDescription = paper.summary.length > 200
+    ? paper.summary.slice(0, 197) + "..."
+    : paper.summary;
 
   return (
     <div className="space-y-8">
+      <Helmet>
+        <title>{paper.title} — arxiv radar</title>
+        <meta name="description" content={metaDescription} />
+        <meta property="og:title" content={paper.title} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:url" content={`https://arxivradar.com/paper/${paper.id}`} />
+        <meta property="og:type" content="article" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={paper.title} />
+        <meta name="twitter:description" content={metaDescription} />
+      </Helmet>
       <Link
         to="/"
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 dark:hover:text-brand-400"
@@ -161,7 +176,7 @@ export default function PaperDetailPage() {
         </p>
         <div className="flex flex-wrap gap-3">
           <a
-            href={`https://www.semanticscholar.org/search?q=arXiv:${paper.id}`}
+            href={`https://api.semanticscholar.org/arXiv:${paper.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -177,15 +192,6 @@ export default function PaperDetailPage() {
           >
             <GraduationCap size={14} />
             Google Scholar
-          </a>
-          <a
-            href={`https://www.connectedpapers.com/main/${paper.id}/arxiv`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <Network size={14} />
-            Connected Papers
           </a>
         </div>
       </div>

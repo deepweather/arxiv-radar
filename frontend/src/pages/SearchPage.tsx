@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { EyeOff } from "lucide-react";
 import { usePapers } from "@/hooks/usePapers";
 import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
@@ -65,6 +66,9 @@ export default function SearchPage() {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>{q ? `${q} — arxiv radar` : "Search — arxiv radar"}</title>
+      </Helmet>
       <div>
         <h1 className="text-2xl font-bold mb-1">Search</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">

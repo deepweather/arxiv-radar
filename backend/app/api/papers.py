@@ -2,6 +2,7 @@ import hashlib
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Query, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -113,6 +114,39 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         "total_tags": total_tags,
         "total_paper_tags": total_paper_tags,
     }
+
+
+@router.get("/{paper_id}/og", response_class=HTMLResponse)
+async def get_paper_og(paper_id: str, db: AsyncSession = Depends(get_db)):
+    """Return minimal HTML with Open Graph meta tags for social media crawlers."""
+    paper = await get_paper(db, paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    title = paper.get("title", "").replace('"', "&quot;").replace("<", "&lt;")
+    summary = paper.get("summary", "")
+    description = (summary[:197] + "...") if len(summary) > 200 else summary
+    description = description.replace('"', "&quot;").replace("<", "&lt;")
+    authors = ", ".join(a.get("name", "") for a in paper.get("authors", [])[:5])
+    url = f"https://arxivradar.com/paper/{paper_id}"
+
+    html = f"""<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8"/>
+<title>{title} — arxiv radar</title>
+<meta name="description" content="{description}"/>
+<meta property="og:title" content="{title}"/>
+<meta property="og:description" content="{description}"/>
+<meta property="og:url" content="{url}"/>
+<meta property="og:type" content="article"/>
+<meta property="og:site_name" content="arxiv radar"/>
+<meta property="article:author" content="{authors}"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="{title}"/>
+<meta name="twitter:description" content="{description}"/>
+<meta http-equiv="refresh" content="0;url={url}"/>
+</head><body><p>Redirecting to <a href="{url}">{title}</a></p></body></html>"""
+    return HTMLResponse(content=html)
 
 
 @router.get("/{paper_id}")

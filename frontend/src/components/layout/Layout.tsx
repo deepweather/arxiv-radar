@@ -14,6 +14,7 @@ import {
   LogIn,
   ChevronDown,
   LogOut,
+  Github,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -22,7 +23,6 @@ import SearchBar from "@/components/search/SearchBar";
 
 const NAV_ITEMS = [
   { to: "/", icon: Home, label: "Home" },
-  { to: "/search", icon: Search, label: "Search" },
   { to: "/tags", icon: Tags, label: "Tags" },
   { to: "/collections", icon: FolderOpen, label: "Collections" },
   { to: "/saved", icon: Bookmark, label: "Saved" },
@@ -46,7 +46,10 @@ export default function Layout() {
         </Link>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate("/search")}
+            onClick={() => {
+              useUIStore.getState().openSidebar();
+              useUIStore.getState().requestSearchFocus();
+            }}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Search"
           >
@@ -81,7 +84,7 @@ export default function Layout() {
           </Link>
         </div>
 
-        <div className="px-3 pb-2">
+        <div className="px-3 pt-4 md:pt-0 pb-2">
           <SearchBar />
         </div>
 
@@ -92,7 +95,7 @@ export default function Layout() {
               <Link
                 key={to}
                 to={to}
-                onClick={() => useUIStore.getState().toggleSidebar()}
+                onClick={() => useUIStore.getState().closeSidebar()}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
                     ? "bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-400"
@@ -163,12 +166,6 @@ export default function Layout() {
               )}
             </div>
           )}
-          <Link
-            to="/imprint"
-            className="block px-3 py-1 text-xs text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400"
-          >
-            Imprint
-          </Link>
         </div>
       </aside>
 
@@ -181,15 +178,33 @@ export default function Layout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 min-h-screen">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 min-h-screen flex flex-col">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
           <Outlet />
         </div>
+        <footer className="border-t border-gray-200 dark:border-gray-800 py-6 mb-16 md:mb-0">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-gray-400 dark:text-gray-600">
+            <span className="font-medium">arxiv radar</span>
+            <a
+              href="https://github.com/deepweather/arxiv-radar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+            >
+              <Github size={12} />
+              GitHub
+            </a>
+            <Link to="/imprint" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
+              Imprint
+            </Link>
+            <span>&copy; {new Date().getFullYear()}</span>
+          </div>
+        </footer>
       </main>
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around py-2">
-        {NAV_ITEMS.slice(0, 5).map(({ to, icon: Icon, label }) => {
+        {NAV_ITEMS.slice(0, 4).map(({ to, icon: Icon, label }) => {
           const active = pathname === to;
           return (
             <Link

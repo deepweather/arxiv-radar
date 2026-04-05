@@ -1,16 +1,25 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, X } from "lucide-react";
+import { useUIStore } from "@/stores/uiStore";
 
 export default function SearchBar() {
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchFocusRequested = useUIStore((s) => s.searchFocusRequested);
 
   useEffect(() => {
     setQuery(searchParams.get("q") || "");
   }, [searchParams]);
+
+  useEffect(() => {
+    if (searchFocusRequested) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+      useUIStore.getState().clearSearchFocus();
+    }
+  }, [searchFocusRequested]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -27,6 +36,7 @@ export default function SearchBar() {
     e.preventDefault();
     if (query.trim()) {
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      useUIStore.getState().closeSidebar();
     }
   };
 

@@ -2,14 +2,13 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import timezone
 
 import arxiv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db.models import Paper
 
 logger = logging.getLogger(__name__)
 

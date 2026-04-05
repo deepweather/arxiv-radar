@@ -10,7 +10,6 @@ Usage:
 import argparse
 import asyncio
 import logging
-import sys
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
@@ -74,9 +73,9 @@ async def cmd_backfill_start(batch_size: int, max_batches: int = 0, delay_betwee
     factory = get_session_factory()
     batches_run = 0
     
-    print(f"\n=== Starting Continuous Backfill ===")
+    print("\n=== Starting Continuous Backfill ===")
     print(f"Batch size: {batch_size} papers per API call")
-    print(f"Date range per batch: 30 days")
+    print("Date range per batch: 30 days")
     print(f"Max batches: {max_batches or 'unlimited'}")
     print(f"Delay between batches: {delay_between}s")
     print()
