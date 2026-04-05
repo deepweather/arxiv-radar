@@ -1,14 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/client";
 import { Collection } from "@/types";
+import { useAuthStore } from "@/stores/authStore";
 
 export function useCollections() {
+  const user = useAuthStore((s) => s.user);
   return useQuery<{ collections: Collection[] }>({
     queryKey: ["collections"],
     queryFn: async () => {
       const { data } = await api.get("/collections");
       return data;
     },
+    enabled: !!user,
   });
 }
 
@@ -65,12 +68,14 @@ export function useUnsavePaper() {
 }
 
 export function useSavedPapers() {
+  const user = useAuthStore((s) => s.user);
   return useQuery({
     queryKey: ["saved-papers"],
     queryFn: async () => {
       const { data } = await api.get("/collections/saved/papers");
       return data;
     },
+    enabled: !!user,
   });
 }
 
