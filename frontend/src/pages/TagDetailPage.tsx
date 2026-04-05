@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useTagPapers } from "@/hooks/useTags";
 import { useRecommendations } from "@/hooks/usePapers";
 import PaperList from "@/components/papers/PaperList";
@@ -10,16 +10,16 @@ const PAGE_SIZE = 10;
 export default function TagDetailPage() {
   const { id } = useParams<{ id: string }>();
   const tagId = id ? parseInt(id, 10) : null;
-  const { data: tagPapers, isLoading } = useTagPapers(tagId);
-  const { data: recs } = useRecommendations("tag", tagId ?? undefined);
+  const { data: tagPapers, isLoading: loadingTagged } = useTagPapers(tagId);
+  const { data: recs, isLoading: loadingRecs } = useRecommendations("tag", tagId ?? undefined);
+  const [showTagged, setShowTagged] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  const allPapers = tagPapers?.papers ?? [];
-  const visiblePapers = useMemo(
-    () => allPapers.slice(0, visibleCount),
-    [allPapers, visibleCount],
+  const taggedPapers = tagPapers?.papers ?? [];
+  const visibleTagged = useMemo(
+    () => taggedPapers.slice(0, visibleCount),
+    [taggedPapers, visibleCount],
   );
-  const hasMore = allPapers.length > visibleCount;
 
   return (
     <div className="space-y-6">
@@ -36,26 +36,43 @@ export default function TagDetailPage() {
           {tagPapers?.tag_name ?? "Tag"}
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {allPapers.length} paper{allPapers.length !== 1 ? "s" : ""}
+          Recommendations based on {taggedPapers.length} tagged paper{taggedPapers.length !== 1 ? "s" : ""}
         </p>
       </div>
 
       <PaperList
-        papers={visiblePapers}
-        loading={isLoading}
-        hasMore={hasMore}
-        onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
+        papers={recs?.papers ?? []}
+        loading={loadingRecs}
       />
 
-      {recs && recs.papers.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-3">
-            Recommended papers
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Similar to papers in this tag
-          </p>
-          <PaperList papers={recs.papers.slice(0, 10)} />
+      {!loadingRecs && (!recs || recs.papers.length === 0) && taggedPapers.length === 0 && (
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4">
+          Tag some papers to get recommendations here.
+        </p>
+      )}
+
+      {taggedPapers.length > 0 && (
+        <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
+          <button
+            onClick={() => setShowTagged(!showTagged)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          >
+            <ChevronDown
+              size={16}
+              className={`transition-transform ${showTagged ? "rotate-180" : ""}`}
+            />
+            Tagged papers ({taggedPapers.length})
+          </button>
+          {showTagged && (
+            <div className="mt-3">
+              <PaperList
+                papers={visibleTagged}
+                loading={loadingTagged}
+                hasMore={taggedPapers.length > visibleCount}
+                onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
