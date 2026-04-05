@@ -18,8 +18,8 @@ export default function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
   const user = useAuthStore((s) => s.user);
   const { data: paper, isLoading } = usePaper(id!);
-  const { data: similar } = useSimilarPapers(id!);
-  const { data: authorPapers } = useQuery<{ papers: Paper[] }>({
+  const { data: similar, isLoading: loadingSimilar } = useSimilarPapers(id!);
+  const { data: authorPapers, isLoading: loadingAuthors } = useQuery<{ papers: Paper[] }>({
     queryKey: ["paper", id, "by-authors"],
     queryFn: async () => {
       const { data } = await api.get(`/papers/${id}/by-authors`);
@@ -196,24 +196,42 @@ export default function PaperDetailPage() {
         </div>
       </div>
 
-      {similar && similar.papers.length > 0 && (
+      {(loadingSimilar || (similar && similar.papers.length > 0)) && (
         <div>
           <h2 className="text-lg font-semibold mb-4">Similar Papers</h2>
           <div className="space-y-3">
-            {similar.papers.slice(0, 10).map((p) => (
-              <PaperCard key={p.id} paper={p} />
-            ))}
+            {loadingSimilar
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/2" />
+                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
+                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-4/5" />
+                  </div>
+                ))
+              : similar!.papers.slice(0, 10).map((p) => (
+                  <PaperCard key={p.id} paper={p} />
+                ))}
           </div>
         </div>
       )}
 
-      {authorPapers && authorPapers.papers.length > 0 && (
+      {(loadingAuthors || (authorPapers && authorPapers.papers.length > 0)) && (
         <div>
           <h2 className="text-lg font-semibold mb-4">More from These Authors</h2>
           <div className="space-y-3">
-            {authorPapers.papers.slice(0, 8).map((p) => (
-              <PaperCard key={p.id} paper={p} />
-            ))}
+            {loadingAuthors
+              ? Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/2" />
+                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
+                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-4/5" />
+                  </div>
+                ))
+              : authorPapers!.papers.slice(0, 8).map((p) => (
+                  <PaperCard key={p.id} paper={p} />
+                ))}
           </div>
         </div>
       )}
