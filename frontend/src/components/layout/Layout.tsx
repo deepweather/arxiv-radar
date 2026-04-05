@@ -76,7 +76,7 @@ export default function Layout() {
       <aside
         className={`${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 fixed md:sticky top-0 left-0 z-40 w-64 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform duration-200 flex flex-col`}
+        } md:translate-x-0 fixed md:sticky top-[53px] md:top-0 left-0 z-40 w-64 h-[calc(100vh-53px)] md:h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform duration-200 flex flex-col`}
       >
         <div className="hidden md:flex items-center px-6 py-5">
           <Link to="/" className="text-xl font-bold text-brand-700 dark:text-brand-400">
@@ -88,7 +88,7 @@ export default function Layout() {
           <SearchBar />
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1">
           {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
             const active = pathname === to;
             return (
