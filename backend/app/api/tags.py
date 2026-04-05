@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.db.models import User, Tag, PaperTag, Paper
 from app.api.deps import get_current_user
+from app.services.cache import cache_delete_pattern
 
 router = APIRouter()
 
@@ -100,6 +101,8 @@ async def add_paper_to_tag(
         return {"detail": "Already tagged"}
 
     db.add(PaperTag(tag_id=tag_id, paper_id=body.paper_id))
+    await cache_delete_pattern(f"rec-tag:{tag_id}:*")
+    await cache_delete_pattern(f"for-you:{user.id}:*")
     return {"detail": "Paper tagged"}
 
 
@@ -114,6 +117,8 @@ async def remove_paper_from_tag(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Tag not found")
     await db.execute(delete(PaperTag).where(PaperTag.tag_id == tag_id, PaperTag.paper_id == paper_id))
+    await cache_delete_pattern(f"rec-tag:{tag_id}:*")
+    await cache_delete_pattern(f"for-you:{user.id}:*")
 
 
 @router.get("/{tag_id}/papers")

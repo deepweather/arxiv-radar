@@ -7,6 +7,7 @@ from app.db.models import User, Tag
 from app.api.deps import get_current_user
 from app.services.recommender import recommend_for_tag, recommend_for_user
 from app.services.classifier_recommender import recommend_with_classifier_and_explanation
+from app.services.cache import cache_get, cache_set
 
 router = APIRouter()
 
@@ -19,13 +20,22 @@ async def for_you(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    cache_key = f"for-you:{user.id}:{limit}:{days}:{use_classifier}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     if use_classifier:
         papers = await recommend_with_classifier_and_explanation(db, str(user.id), limit=limit, days=days)
         if papers:
-            return {"papers": papers, "method": "classifier"}
-    
+            result = {"papers": papers, "method": "classifier"}
+            await cache_set(cache_key, result, ttl_seconds=900)
+            return result
+
     papers = await recommend_for_user(db, str(user.id), limit=limit, days=days)
-    return {"papers": papers, "method": "centroid"}
+    result = {"papers": papers, "method": "centroid"}
+    await cache_set(cache_key, result, ttl_seconds=900)
+    return result
 
 
 @router.get("/tag/{tag_id}")
@@ -39,5 +49,13 @@ async def by_tag(
     result = await db.execute(select(Tag).where(Tag.id == tag_id, Tag.user_id == user.id))
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Tag not found")
+
+    cache_key = f"rec-tag:{tag_id}:{limit}:{days}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     papers = await recommend_for_tag(db, tag_id, limit=limit, days=days)
-    return {"papers": papers}
+    resp = {"papers": papers}
+    await cache_set(cache_key, resp, ttl_seconds=1800)
+    return resp

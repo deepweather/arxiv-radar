@@ -11,6 +11,7 @@ from app.db.models import User
 from app.api.deps import get_optional_user
 from app.services.search import hybrid_search, list_papers, get_paper, count_papers
 from app.services.recommender import similar_papers, papers_by_authors
+from app.services.cache import cache_get, cache_set
 
 router = APIRouter()
 
@@ -172,12 +173,18 @@ async def get_papers_by_authors(
     limit: int = Query(10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
+    cache_key = f"by-authors:{paper_id}:{limit}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
     paper = await get_paper(db, paper_id)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     author_names = [a["name"] for a in paper.get("authors", [])[:3]]
     papers = await papers_by_authors(db, author_names, exclude_paper_id=paper_id, limit=limit)
-    return {"papers": papers}
+    result = {"papers": papers}
+    await cache_set(cache_key, result, ttl_seconds=3600)
+    return result
 
 
 @router.get("/{paper_id}/similar")
@@ -186,5 +193,11 @@ async def get_similar_papers(
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
+    cache_key = f"similar:{paper_id}:{limit}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
     papers = await similar_papers(db, paper_id, limit=limit)
-    return {"papers": papers}
+    result = {"papers": papers}
+    await cache_set(cache_key, result, ttl_seconds=3600)
+    return result
