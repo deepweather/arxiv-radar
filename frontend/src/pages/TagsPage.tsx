@@ -1,12 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Trash2, ChevronRight } from "lucide-react";
-import { useTags, useCreateTag, useDeleteTag, useTagPapers } from "@/hooks/useTags";
-import { useRecommendations } from "@/hooks/usePapers";
-import PaperList from "@/components/papers/PaperList";
+import { useTags, useCreateTag, useDeleteTag } from "@/hooks/useTags";
 import { useAuthStore } from "@/stores/authStore";
-
-const PAGE_SIZE = 10;
 
 export default function TagsPage() {
   const user = useAuthStore((s) => s.user);
@@ -14,16 +10,6 @@ export default function TagsPage() {
   const createTag = useCreateTag();
   const deleteTag = useDeleteTag();
   const [newTag, setNewTag] = useState("");
-  const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const { data: tagPapers } = useTagPapers(selectedTagId);
-  const { data: recs } = useRecommendations("tag", selectedTagId ?? undefined);
-
-  const visibleTagPapers = useMemo(
-    () => (tagPapers?.papers ?? []).slice(0, visibleCount),
-    [tagPapers, visibleCount],
-  );
-  const hasMoreTagPapers = (tagPapers?.papers.length ?? 0) > visibleCount;
 
   if (!user) {
     return (
@@ -75,77 +61,39 @@ export default function TagsPage() {
               <div key={i} className="h-16 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
             ))
           : (tags ?? []).map((tag) => (
-              <button
+              <div
                 key={tag.id}
-                type="button"
-                aria-pressed={selectedTagId === tag.id}
-                className={`flex items-center justify-between p-4 rounded-xl border transition-colors text-left w-full ${
-                  selectedTagId === tag.id
-                    ? "border-brand-400 bg-brand-50 dark:bg-brand-950 dark:border-brand-700"
-                    : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-brand-300"
-                }`}
-                onClick={() => {
-                  setSelectedTagId(selectedTagId === tag.id ? null : tag.id);
-                  setVisibleCount(PAGE_SIZE);
-                }}
+                className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-brand-300 dark:hover:border-brand-700 transition-colors"
               >
-                <div>
+                <Link
+                  to={`/tags/${tag.id}`}
+                  className="flex-1 min-w-0"
+                >
                   <span className="font-medium">{tag.name}</span>
                   <span className="ml-2 text-sm text-gray-400">{tag.paper_count} papers</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span
-                    role="button"
-                    tabIndex={0}
+                </Link>
+                <div className="flex items-center gap-1 ml-2">
+                  <button
                     aria-label={`Delete tag ${tag.name}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (confirm(`Delete tag "${tag.name}"?`)) deleteTag.mutate(tag.id);
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.stopPropagation();
-                        if (confirm(`Delete tag "${tag.name}"?`)) deleteTag.mutate(tag.id);
-                      }
-                    }}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
                   >
                     <Trash2 size={14} />
-                  </span>
-                  <ChevronRight size={14} className="text-gray-400" />
+                  </button>
+                  <Link to={`/tags/${tag.id}`} className="p-1.5 text-gray-400">
+                    <ChevronRight size={14} />
+                  </Link>
                 </div>
-              </button>
+              </div>
             ))}
       </div>
 
-      {selectedTagId && tagPapers && tagPapers.papers.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-1">
-            Papers in this tag
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            {tagPapers.papers.length} paper{tagPapers.papers.length !== 1 ? "s" : ""}
-          </p>
-          <PaperList
-            papers={visibleTagPapers}
-            hasMore={hasMoreTagPapers}
-            onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
-          />
-        </div>
-      )}
-
-      {selectedTagId && tagPapers && tagPapers.papers.length === 0 && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-4">
-          No papers in this tag yet. Tag papers from the home page or paper detail pages.
-        </p>
-      )}
-
-      {selectedTagId && recs && recs.papers.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-3">
-            Recommended papers for this tag
-          </h2>
-          <PaperList papers={recs.papers} />
+      {!isLoading && (tags ?? []).length === 0 && (
+        <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+          <p>No tags yet. Create one above, then tag papers from the home page.</p>
         </div>
       )}
     </div>

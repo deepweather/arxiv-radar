@@ -123,7 +123,8 @@ async def list_tag_papers(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Tag).where(Tag.id == tag_id, Tag.user_id == user.id))
-    if not result.scalar_one_or_none():
+    tag = result.scalar_one_or_none()
+    if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
     papers_result = await db.execute(
@@ -134,6 +135,7 @@ async def list_tag_papers(
     )
     papers = papers_result.scalars().all()
     return {
+        "tag_name": tag.name,
         "papers": [
             {
                 "id": p.id,
