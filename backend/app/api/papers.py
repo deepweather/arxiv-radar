@@ -133,7 +133,7 @@ async def get_paper_og(paper_id: str, db: AsyncSession = Depends(get_db)):
     html = f"""<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8"/>
-<title>{title} — arxiv radar</title>
+<title>{title} - arxiv radar</title>
 <meta name="description" content="{description}"/>
 <meta property="og:title" content="{title}"/>
 <meta property="og:description" content="{description}"/>

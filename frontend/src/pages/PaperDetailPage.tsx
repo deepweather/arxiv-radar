@@ -67,7 +67,7 @@ export default function PaperDetailPage() {
   return (
     <div className="space-y-8">
       <Helmet>
-        <title>{paper.title} — arxiv radar</title>
+        <title>{paper.title} - arxiv radar</title>
         <meta name="description" content={metaDescription} />
         <meta property="og:title" content={paper.title} />
         <meta property="og:description" content={metaDescription} />

@@ -67,7 +67,7 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <Helmet>
-        <title>arxiv radar — AI Paper Discovery</title>
+        <title>arxiv radar - AI Paper Discovery</title>
       </Helmet>
       <div>
         <h1 className="text-2xl font-bold mb-1">{getTitle()}</h1>

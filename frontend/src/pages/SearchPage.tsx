@@ -67,7 +67,7 @@ export default function SearchPage() {
   return (
     <div className="space-y-6">
       <Helmet>
-        <title>{q ? `${q} — arxiv radar` : "Search — arxiv radar"}</title>
+        <title>{q ? `${q} - arxiv radar` : "Search - arxiv radar"}</title>
       </Helmet>
       <div>
         <h1 className="text-2xl font-bold mb-1">Search</h1>
