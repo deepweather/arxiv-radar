@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Trash2, ChevronRight } from "lucide-react";
-import { useTags, useCreateTag, useDeleteTag } from "@/hooks/useTags";
+import { useTags, useCreateTag, useDeleteTag, useTagPapers } from "@/hooks/useTags";
 import { useRecommendations } from "@/hooks/usePapers";
 import PaperList from "@/components/papers/PaperList";
 import { useAuthStore } from "@/stores/authStore";
@@ -13,6 +13,7 @@ export default function TagsPage() {
   const deleteTag = useDeleteTag();
   const [newTag, setNewTag] = useState("");
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
+  const { data: tagPapers } = useTagPapers(selectedTagId);
   const { data: recs } = useRecommendations("tag", selectedTagId ?? undefined);
 
   if (!user) {
@@ -105,7 +106,22 @@ export default function TagsPage() {
             ))}
       </div>
 
-      {selectedTagId && recs && (
+      {selectedTagId && tagPapers && tagPapers.papers.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">
+            Papers in this tag
+          </h2>
+          <PaperList papers={tagPapers.papers} />
+        </div>
+      )}
+
+      {selectedTagId && tagPapers && tagPapers.papers.length === 0 && (
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4">
+          No papers in this tag yet. Tag papers from the home page or paper detail pages.
+        </p>
+      )}
+
+      {selectedTagId && recs && recs.papers.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-3">
             Recommended papers for this tag

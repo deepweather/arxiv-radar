@@ -49,6 +49,20 @@ export function useRemovePaperFromTag() {
     mutationFn: async ({ tagId, paperId }: { tagId: number; paperId: string }) => {
       await api.delete(`/tags/${tagId}/papers/${paperId}`);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tags"] }),
+    onSuccess: (_, { tagId }) => {
+      qc.invalidateQueries({ queryKey: ["tags"] });
+      qc.invalidateQueries({ queryKey: ["tag-papers", tagId] });
+    },
+  });
+}
+
+export function useTagPapers(tagId: number | null) {
+  return useQuery({
+    queryKey: ["tag-papers", tagId],
+    queryFn: async () => {
+      const { data } = await api.get(`/tags/${tagId}/papers`);
+      return data;
+    },
+    enabled: tagId !== null,
   });
 }
