@@ -26,6 +26,18 @@ export function useCollection(id: string) {
   });
 }
 
+export function usePublicCollections(sort: string = "trending", offset: number = 0, limit: number = 20) {
+  return useQuery<{ collections: Collection[] }>({
+    queryKey: ["public-collections", sort, offset, limit],
+    queryFn: async () => {
+      const { data } = await api.get("/collections/public", {
+        params: { sort, offset, limit },
+      });
+      return data;
+    },
+  });
+}
+
 export function useCreateCollection() {
   const qc = useQueryClient();
   return useMutation({

@@ -35,6 +35,10 @@ export interface Collection {
   name: string;
   description: string;
   is_public: boolean;
+  share_slug?: string;
   paper_count?: number;
+  view_count?: number;
+  owner_name?: string;
+  is_owner?: boolean;
   created_at: string;
 }

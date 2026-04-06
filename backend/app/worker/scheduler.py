@@ -167,11 +167,32 @@ async def run_email_digests():
                 logger.exception("Email digest job failed")
 
 
+async def run_seed_collections():
+    """Seed the system user and curated collections (idempotent)."""
+    from app.services.seed import run_seed
+
+    async with _get_job_lock():
+        factory = _get_session_factory()
+
+        async with factory() as db:
+            try:
+                stats = await run_seed(db)
+                logger.info(
+                    "Seed complete: user_created=%s, collections=%d, papers_added=%d, papers_fetched=%d",
+                    stats["user_created"],
+                    stats["collections_created"],
+                    stats["papers_added"],
+                    stats["papers_fetched"],
+                )
+            except Exception:
+                logger.exception("Seed collections failed")
+
+
 async def run_startup():
     """Run all startup tasks sequentially to avoid connection pool conflicts."""
     logger.info("Running startup tasks...")
     await run_ingest_and_embed()
-    # Citation fetching disabled - using external links instead
+    await run_seed_collections()
     logger.info("Startup tasks complete")
 
 

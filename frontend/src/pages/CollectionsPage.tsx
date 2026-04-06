@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Trash2, Globe, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Globe, Lock, ChevronDown, ChevronUp, Compass } from "lucide-react";
 import { useCollections, useCreateCollection, useDeleteCollection } from "@/hooks/useCollections";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -16,11 +16,18 @@ export default function CollectionsPage() {
 
   if (!user) {
     return (
-      <div className="text-center py-16">
+      <div className="text-center py-16 space-y-4">
         <h1 className="text-2xl font-bold mb-2">Collections</h1>
         <p className="text-gray-500 dark:text-gray-400">
-          <Link to="/login" className="text-brand-600 hover:underline">Sign in</Link> to create collections
+          <Link to="/login" className="text-brand-600 hover:underline">Sign in</Link> to create and manage your own collections
         </p>
+        <Link
+          to="/collections/explore"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors"
+        >
+          <Compass size={16} />
+          Explore Public Collections
+        </Link>
       </div>
     );
   }
@@ -44,11 +51,20 @@ export default function CollectionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold mb-1">Collections</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Organize papers into curated reading lists
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Collections</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Organize papers into curated reading lists
+          </p>
+        </div>
+        <Link
+          to="/collections/explore"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+        >
+          <Compass size={14} />
+          Explore
+        </Link>
       </div>
 
       <div className="space-y-2 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">

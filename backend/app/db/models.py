@@ -94,6 +94,10 @@ class PaperTag(Base):
     paper = relationship("Paper", back_populates="tags")
 
 
+def _generate_share_slug() -> str:
+    return uuid.uuid4().hex[:10]
+
+
 class Collection(Base):
     __tablename__ = "collections"
 
@@ -102,13 +106,16 @@ class Collection(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True, default="")
     is_public = Column(Boolean, nullable=False, default=False)
+    share_slug = Column(String(60), unique=True, nullable=True, default=_generate_share_slug)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="collections")
     papers = relationship("CollectionPaper", back_populates="collection", cascade="all, delete-orphan")
+    views = relationship("CollectionView", back_populates="collection", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_collection_user_name"),
+        Index("ix_collections_is_public", "is_public"),
     )
 
 
@@ -122,6 +129,21 @@ class CollectionPaper(Base):
 
     collection = relationship("Collection", back_populates="papers")
     paper = relationship("Paper", back_populates="collection_entries")
+
+
+class CollectionView(Base):
+    __tablename__ = "collection_views"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    collection_id = Column(UUID(as_uuid=True), ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_hash = Column(String(64), nullable=False)
+    viewed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    collection = relationship("Collection", back_populates="views")
+
+    __table_args__ = (
+        Index("ix_collection_views_coll_viewed", "collection_id", "viewed_at"),
+    )
 
 
 class SavedPaper(Base):

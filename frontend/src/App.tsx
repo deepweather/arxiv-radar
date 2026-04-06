@@ -6,6 +6,7 @@ import PaperDetailPage from "./pages/PaperDetailPage";
 import TagsPage from "./pages/TagsPage";
 import TagDetailPage from "./pages/TagDetailPage";
 import CollectionsPage from "./pages/CollectionsPage";
+import ExploreCollectionsPage from "./pages/ExploreCollectionsPage";
 import CollectionDetailPage from "./pages/CollectionDetailPage";
 import SavedPage from "./pages/SavedPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/tags" element={<TagsPage />} />
         <Route path="/tags/:id" element={<TagDetailPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
+        <Route path="/collections/explore" element={<ExploreCollectionsPage />} />
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
         <Route path="/saved" element={<SavedPage />} />
         <Route path="/settings" element={<SettingsPage />} />

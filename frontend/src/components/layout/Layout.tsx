@@ -15,6 +15,7 @@ import {
   ChevronDown,
   LogOut,
   Github,
+  Compass,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/tags", icon: Tags, label: "Tags" },
   { to: "/collections", icon: FolderOpen, label: "Collections" },
+  { to: "/collections/explore", icon: Compass, label: "Explore" },
   { to: "/saved", icon: Bookmark, label: "Saved" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
