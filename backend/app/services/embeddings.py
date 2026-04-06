@@ -63,13 +63,53 @@ async def compute_embeddings(db: AsyncSession, batch_size: int = 128, max_papers
     return total
 
 
+async def compute_chunk_embeddings(db: AsyncSession, batch_size: int = 128, max_chunks: int = 0) -> int:
+    """Compute embeddings for paper chunks that don't have them yet."""
+    limit = max_chunks if max_chunks > 0 else 100_000
+    result = await db.execute(
+        text("SELECT id, content FROM paper_chunks WHERE embedding IS NULL ORDER BY id LIMIT :limit"),
+        {"limit": limit},
+    )
+    rows = result.fetchall()
+    if not rows:
+        logger.info("No chunks need embedding")
+        return 0
+
+    logger.info("Computing embeddings for %d chunks", len(rows))
+    model = _get_model()
+
+    update_sql = text("UPDATE paper_chunks SET embedding = :emb WHERE id = :id")
+    total = 0
+    for i in range(0, len(rows), batch_size):
+        chunk = rows[i : i + batch_size]
+        texts = [r.content for r in chunk]
+        embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
+
+        for r, emb in zip(chunk, embeddings):
+            await db.execute(update_sql, {"id": r.id, "emb": str(emb.tolist())})
+
+        total += len(chunk)
+        if total % (batch_size * 4) == 0:
+            await db.commit()
+        logger.info("Embedded %d/%d chunks", total, len(rows))
+
+    await db.commit()
+    logger.info("Chunk embedding complete: %d chunks processed", total)
+    return total
+
+
 async def ensure_hnsw_index(db: AsyncSession) -> None:
-    """Create the HNSW index if it doesn't exist. Call after bulk embedding."""
-    logger.info("Creating HNSW index (this may take a few minutes)...")
+    """Create HNSW indexes if they don't exist. Call after bulk embedding."""
+    logger.info("Creating HNSW indexes (this may take a few minutes)...")
     await db.execute(text(
         f"CREATE INDEX IF NOT EXISTS ix_papers_embedding_hnsw "
         f"ON papers USING hnsw (embedding vector_cosine_ops) "
         f"WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION})"
     ))
+    await db.execute(text(
+        f"CREATE INDEX IF NOT EXISTS ix_paper_chunks_embedding_hnsw "
+        f"ON paper_chunks USING hnsw (embedding vector_cosine_ops) "
+        f"WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION})"
+    ))
     await db.commit()
-    logger.info("HNSW index ready")
+    logger.info("HNSW indexes ready")

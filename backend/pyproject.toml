@@ -22,6 +22,10 @@ dependencies = [
     "apscheduler>=3.10",
     "httpx>=0.28",
     "email-validator>=2.2",
+    "pymupdf>=1.24",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "mcp[cli]>=1.0",
 ]
 
 [project.urls]

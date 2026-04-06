@@ -1,0 +1,88 @@
+# arxiv radar
+
+> arxiv radar is a self-hosted arXiv paper discovery platform with semantic search, personalized recommendations, and an MCP server that lets AI agents search and retrieve academic papers.
+
+## MCP Server
+
+The arxiv-radar MCP server provides AI agents with tools to search and retrieve arXiv papers.
+
+- Public URL: https://arxivradar.com/mcp/sse
+- Self-hosted URL: http://localhost:8080/mcp/sse
+- Transport: SSE (Server-Sent Events)
+- Auth: None required
+
+### Tools
+
+- `search_papers(query, limit?, categories?, days?, sort?)`: Semantic search over paper abstracts. Returns titles, authors, abstracts, and links (PDF, HTML, abstract page). Supports category filtering (e.g. "cs.LG,cs.AI"), date range (last N days), and sort order ("relevance", "newest", "oldest").
+- `get_paper(paper_id)`: Get metadata and abstract for a single paper by arXiv ID (e.g. "2301.12345").
+- `list_recent_papers(limit?, categories?, days?, sort?)`: Browse recently published papers. Defaults to last 7 days, sorted newest first.
+- `get_similar_papers(paper_id, limit?)`: Find papers similar to a given paper using embedding vector similarity.
+
+### Paper Output Format
+
+Each paper result includes:
+- Title, authors, categories, publication date
+- Abstract (full text)
+- PDF URL (arxiv.org/pdf/...)
+- HTML URL (ar5iv.labs.arxiv.org/html/...) — fetch this for full paper content
+- Abstract page URL (arxiv.org/abs/...)
+
+### Connecting
+
+Cursor (.cursor/mcp.json):
+```json
+{
+  "mcpServers": {
+    "arxiv-radar": {
+      "type": "sse",
+      "url": "https://arxivradar.com/mcp/sse"
+    }
+  }
+}
+```
+
+Claude Code:
+```
+claude mcp add --transport sse arxiv-radar https://arxivradar.com/mcp/sse
+```
+
+Claude Desktop (~/Library/Application Support/Claude/claude_desktop_config.json):
+```json
+{
+  "mcpServers": {
+    "arxiv-radar": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://arxivradar.com/mcp/sse"]
+    }
+  }
+}
+```
+
+## Indexed Categories
+
+The default configuration indexes papers from: cs.CV, cs.LG, cs.CL, cs.AI, cs.NE, cs.RO. This is configurable via the ARXIV_CATEGORIES environment variable.
+
+## REST API
+
+Base URL: https://arxivradar.com/api
+OpenAPI docs: https://arxivradar.com/api/docs
+
+Key endpoints:
+- GET /api/papers?q=...&days=...&categories=... — search papers
+- GET /api/papers/{id} — paper detail
+- GET /api/papers/{id}/similar — similar papers
+- GET /api/recommendations/for-you — personalized feed (requires auth)
+- GET /api/social/trending — trending papers
+
+## Architecture
+
+- Backend: FastAPI (Python, async)
+- Database: PostgreSQL 16 + pgvector for vector similarity
+- Embeddings: all-MiniLM-L6-v2 (384-dim, runs on CPU)
+- Search: Hybrid semantic + full-text search with Reciprocal Rank Fusion
+- Frontend: React + TypeScript + Tailwind CSS
+- Orchestration: Docker Compose (7 containers)
+
+## Source
+
+- [README](README.md)

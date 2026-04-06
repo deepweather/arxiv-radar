@@ -196,6 +196,36 @@ class PaperView(Base):
     )
 
 
+class PaperFulltext(Base):
+    __tablename__ = "paper_fulltext"
+
+    paper_id = Column(String(20), ForeignKey("papers.id", ondelete="CASCADE"), primary_key=True)
+    source = Column(String(20), nullable=False, comment="latex | ar5iv_html | pdf")
+    content = Column(Text, nullable=True)
+    sections = Column(JSONB, nullable=True)
+    char_count = Column(Integer, nullable=True)
+    status = Column(String(20), nullable=False, server_default="pending", comment="pending|extracted|failed")
+    extracted_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+
+class PaperChunk(Base):
+    __tablename__ = "paper_chunks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    paper_id = Column(String(20), ForeignKey("papers.id", ondelete="CASCADE"), nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    section_title = Column(String(200), nullable=True)
+    content = Column(Text, nullable=False)
+    token_count = Column(Integer, nullable=True)
+    embedding = Column(Vector(384), nullable=True)
+
+    __table_args__ = (
+        Index("ix_paper_chunks_paper_id", "paper_id"),
+        Index("ix_paper_chunks_paper_chunk", "paper_id", "chunk_index", unique=True),
+    )
+
+
 class BackfillState(Base):
     __tablename__ = "backfill_state"
 

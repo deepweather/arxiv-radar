@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "arxiv-radar": {
+      "type": "sse",
+      "url": "https://arxivradar.com/mcp/sse"
+    }
+  }
+}

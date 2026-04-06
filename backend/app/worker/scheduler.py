@@ -25,6 +25,12 @@ BACKFILL_INTERVAL_MINUTES = int(os.getenv("BACKFILL_INTERVAL_MINUTES", "30"))
 DIGEST_ENABLED = os.getenv("DIGEST_ENABLED", "false").lower() == "true"
 DIGEST_HOUR_UTC = int(os.getenv("DIGEST_HOUR_UTC", "8"))
 
+# Fulltext extraction config from env
+FULLTEXT_ENABLED = os.getenv("FULLTEXT_ENABLED", "false").lower() == "true"
+FULLTEXT_BATCH_SIZE = int(os.getenv("FULLTEXT_BATCH_SIZE", "20"))
+FULLTEXT_INTERVAL_MINUTES = int(os.getenv("FULLTEXT_INTERVAL_MINUTES", "30"))
+FULLTEXT_PREFER_HTML = os.getenv("FULLTEXT_PREFER_HTML", "true").lower() == "true"
+
 
 def _get_job_lock() -> asyncio.Lock:
     global _job_lock
@@ -167,6 +173,47 @@ async def run_email_digests():
                 logger.exception("Email digest job failed")
 
 
+async def run_fulltext_pipeline():
+    """Extract fulltext, chunk, and embed chunks for papers."""
+    from app.services.fulltext import extract_fulltext_batch
+    from app.services.chunking import chunk_extracted_papers
+    from app.services.embeddings import compute_chunk_embeddings, ensure_hnsw_index
+
+    async with _get_job_lock():
+        factory = _get_session_factory()
+
+        async with factory() as db:
+            try:
+                count = await extract_fulltext_batch(
+                    db,
+                    batch_size=FULLTEXT_BATCH_SIZE,
+                    prefer_html=FULLTEXT_PREFER_HTML,
+                )
+                logger.info("Fulltext extraction finished: %d papers processed", count)
+            except Exception:
+                logger.exception("Fulltext extraction failed")
+
+        async with factory() as db:
+            try:
+                count = await chunk_extracted_papers(db)
+                logger.info("Chunking finished: %d papers chunked", count)
+            except Exception:
+                logger.exception("Chunking failed")
+
+        async with factory() as db:
+            try:
+                count = await compute_chunk_embeddings(db)
+                logger.info("Chunk embedding finished: %d chunks embedded", count)
+            except Exception:
+                logger.exception("Chunk embedding failed")
+
+        async with factory() as db:
+            try:
+                await ensure_hnsw_index(db)
+            except Exception:
+                logger.exception("HNSW index creation failed (chunks)")
+
+
 async def run_seed_collections():
     """Seed the system user and curated collections (idempotent)."""
     from app.services.seed import run_seed
@@ -235,7 +282,26 @@ async def main():
         )
     else:
         logger.info("Backfill disabled (set BACKFILL_ENABLED=true to enable)")
-    
+
+    # Fulltext extraction pipeline — only if enabled via env
+    if FULLTEXT_ENABLED:
+        scheduler.add_job(
+            run_fulltext_pipeline,
+            "interval",
+            minutes=FULLTEXT_INTERVAL_MINUTES,
+            id="fulltext_pipeline",
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.info(
+            "Fulltext pipeline ENABLED — batch_size=%d, interval=%d minutes, prefer_html=%s",
+            FULLTEXT_BATCH_SIZE,
+            FULLTEXT_INTERVAL_MINUTES,
+            FULLTEXT_PREFER_HTML,
+        )
+    else:
+        logger.info("Fulltext pipeline disabled (set FULLTEXT_ENABLED=true to enable)")
+
     # Email digest job - daily at configured hour UTC
     if DIGEST_ENABLED:
         scheduler.add_job(

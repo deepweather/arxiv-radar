@@ -62,6 +62,27 @@ services:
         condition: service_healthy
     command: python -m app.worker.scheduler
 
+  mcp:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8811
+    volumes:
+      - model_cache:/app/model_cache
+    ports:
+      - "8811:8811"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m app.mcp_server_main
+
   frontend:
     build:
       context: ./frontend
