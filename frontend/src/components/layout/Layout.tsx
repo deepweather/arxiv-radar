@@ -16,6 +16,7 @@ import {
   LogOut,
   Github,
   Compass,
+  Plug,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { to: "/tags", icon: Tags, label: "Tags" },
   { to: "/collections", icon: FolderOpen, label: "Collections" },
   { to: "/collections/explore", icon: Compass, label: "Explore" },
+  { to: "/connect", icon: Plug, label: "Connect" },
   { to: "/saved", icon: Bookmark, label: "Saved" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
@@ -185,6 +187,13 @@ export default function Layout() {
             >
               Imprint
             </Link>
+            <Link
+              to="/connect"
+              onClick={() => useUIStore.getState().closeSidebar()}
+              className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              API
+            </Link>
           </div>
         </div>
       </aside>
@@ -216,6 +225,9 @@ export default function Layout() {
             </a>
             <Link to="/imprint" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
               Imprint
+            </Link>
+            <Link to="/connect" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
+              API
             </Link>
             <span>&copy; {new Date().getFullYear()}</span>
           </div>

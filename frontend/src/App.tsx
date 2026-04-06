@@ -10,6 +10,7 @@ import ExploreCollectionsPage from "./pages/ExploreCollectionsPage";
 import CollectionDetailPage from "./pages/CollectionDetailPage";
 import SavedPage from "./pages/SavedPage";
 import SettingsPage from "./pages/SettingsPage";
+import ConnectPage from "./pages/ConnectPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/collections/explore" element={<ExploreCollectionsPage />} />
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
         <Route path="/saved" element={<SavedPage />} />
+        <Route path="/connect" element={<ConnectPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="/login" element={<LoginPage />} />
