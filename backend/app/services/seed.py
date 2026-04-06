@@ -104,6 +104,138 @@ SEED_COLLECTIONS = [
             "2602.11893",   # Universal Diffusion-Based Probabilistic Downscaling (Jua)
         ],
     },
+    {
+        "name": "World Models",
+        "description": "From learning environment simulators to video generation as world simulation — the papers building digital twins of reality.",
+        "paper_ids": [
+            "1803.10122",   # World Models (Ha & Schmidhuber)
+            "1912.01603",   # Dreamer: Learning Behaviors by Latent Imagination
+            "2010.02193",   # DreamerV2: Mastering Atari with Discrete World Models
+            "2301.04104",   # DreamerV3: Mastering Diverse Domains through World Models
+            "2309.17080",   # GAIA-1: Generative World Model for Autonomous Driving
+            "2310.06114",   # UniSim: Learning Interactive Real-World Simulators
+            "2402.15391",   # Genie: Generative Interactive Environments
+            "2406.09455",   # Pandora: General World Model with Natural Language Actions
+            "2501.03575",   # NVIDIA Cosmos World Foundation Model Platform
+            "2512.08931",   # Astra: General Interactive World Model
+            "2603.19312",   # LeWorldModel: Stable End-to-End JEPA from Pixels
+        ],
+    },
+    {
+        "name": "Reasoning & Thinking Models",
+        "description": "The chain-of-thought revolution — from prompting tricks to test-time compute scaling and dedicated reasoning models.",
+        "paper_ids": [
+            "2201.11903",   # Chain-of-Thought Prompting
+            "2203.11171",   # Self-Consistency Improves Chain of Thought Reasoning
+            "2305.10601",   # Tree of Thoughts: Deliberate Problem Solving
+            "2305.20050",   # Let's Verify Step by Step (Process Reward Models)
+            "2403.09629",   # Quiet-STaR: LMs Can Teach Themselves to Think
+            "2408.03314",   # Scaling LLM Test-Time Compute Optimally
+            "2501.12599",   # Kimi k1.5: Scaling Reinforcement Learning with LLMs
+            "2501.12948",   # DeepSeek-R1: Incentivizing Reasoning via RL
+            "2501.19393",   # s1: Simple Test-Time Scaling
+            "2502.03387",   # LIMO: Less Is More for Reasoning
+        ],
+    },
+    {
+        "name": "Robotics & Embodied AI",
+        "description": "Foundation models meet physical manipulation — from RT-1 to general-purpose robot policies.",
+        "paper_ids": [
+            "2212.06817",   # RT-1: Robotics Transformer for Real-World Control
+            "2307.15818",   # RT-2: Vision-Language-Action Models
+            "2401.12963",   # AutoRT: Large Scale Orchestration of Robotic Agents
+            "2402.18294",   # Whole-body Humanoid Robot Locomotion with Human Reference
+            "2405.12213",   # Octo: An Open-Source Generalist Robot Policy
+            "2406.09246",   # OpenVLA: Open-Source Vision-Language-Action Model
+            "2410.24164",   # pi0: Vision-Language-Action Flow Model
+            "2412.03293",   # Diffusion-VLA: Scaling Robot Foundation Models
+            "2504.16054",   # pi0.5: VLA with Open-World Generalization
+            "2507.02029",   # RoboBrain 2.0
+        ],
+    },
+    {
+        "name": "AI for Math & Science",
+        "description": "AI systems making real discoveries — solving olympiad problems, proving theorems, and rediscovering physical laws.",
+        "paper_ids": [
+            "2206.14858",   # Minerva: Solving Quantitative Reasoning Problems
+            "2310.10631",   # Llemma: An Open Language Model for Mathematics
+            "2405.14333",   # DeepSeek-Prover: Theorem Proving via Synthetic Data
+            "2411.19744",   # FunSearch: Amplifying Human Performance (follow-up)
+            "2502.03544",   # AlphaGeometry2: Gold-Medalist Olympiad Geometry
+            "2502.15815",   # TPBench: AI Reasoning in Theoretical Physics
+            "2504.01538",   # AI-Newton: Concept-Driven Physical Law Discovery
+            "2511.02864",   # AlphaEvolve: Mathematical Exploration at Scale
+            "2512.19799",   # PhysMaster: Autonomous AI Physicist
+        ],
+    },
+    {
+        "name": "AI Coding Agents",
+        "description": "From autocomplete to autonomous software engineering — AI systems that write, debug, and ship code.",
+        "paper_ids": [
+            "2107.03374",   # Codex: Evaluating Large Language Models Trained on Code
+            "2203.07814",   # AlphaCode: Competition-Level Code Generation
+            "2305.06161",   # StarCoder: May the Source Be With You
+            "2310.06770",   # SWE-bench: Resolving Real-World GitHub Issues
+            "2404.05427",   # AutoCodeRover: Autonomous Program Improvement
+            "2405.15793",   # SWE-agent: Agent-Computer Interfaces
+            "2406.11931",   # DeepSeek-Coder-V2: Breaking the Closed-Source Barrier
+            "2407.16741",   # OpenHands: Open Platform for AI Software Developers
+            "2409.12186",   # Qwen2.5-Coder
+            "2411.04905",   # OpenCoder: Open Cookbook for Code LLMs
+            "2506.07636",   # SWE-Dev: Training and Inference Scaling for SWE Agents
+        ],
+    },
+    {
+        "name": "Deep Research Agents",
+        "description": "AI agents that autonomously browse the web, research topics, and synthesize comprehensive reports.",
+        "paper_ids": [
+            "2112.09332",   # WebGPT: Browser-Assisted Question-Answering
+            "2210.03629",   # ReAct: Synergizing Reasoning and Acting
+            "2302.04761",   # Toolformer: LMs Can Teach Themselves to Use Tools
+            "2305.16291",   # Voyager: Open-Ended Embodied Agent with LLMs
+            "2311.12983",   # GAIA: Benchmark for General AI Assistants
+            "2504.12516",   # BrowseComp: Benchmark for Browsing Agents
+            "2509.13309",   # WebResearcher: Unbounded Reasoning in Long-Horizon Agents
+            "2509.24107",   # Fathom-DeepResearch: Long Horizon Retrieval & Synthesis
+            "2510.15862",   # Rethinking RL-Based Deep Research Agents
+            "2601.19578",   # Yunque DeepResearch
+        ],
+    },
+    {
+        "name": "Video & Image Generation",
+        "description": "The diffusion and flow matching revolution in visual content creation — from DDPM to modern video generators.",
+        "paper_ids": [
+            "2006.11239",   # DDPM: Denoising Diffusion Probabilistic Models
+            "2112.10752",   # Latent Diffusion Models / Stable Diffusion
+            "2204.06125",   # DALL-E 2: Hierarchical Text-Conditional Image Generation
+            "2205.11487",   # Imagen: Photorealistic Text-to-Image Diffusion
+            "2212.09748",   # DiT: Scalable Diffusion Models with Transformers
+            "2307.01952",   # SDXL: Improving Latent Diffusion for High-Res
+            "2311.15127",   # Stable Video Diffusion
+            "2403.03206",   # Scaling Rectified Flow Transformers (FLUX)
+            "2408.06072",   # CogVideoX: Text-to-Video Diffusion
+            "2410.13720",   # Movie Gen: Media Foundation Models (Meta)
+            "2503.20314",   # Wan: Open Large-Scale Video Generative Models
+        ],
+    },
+    {
+        "name": "Audio & Speech AI",
+        "description": "Voice cloning, text-to-speech, and music generation — the audio frontier of generative AI.",
+        "paper_ids": [
+            "2005.00341",   # Jukebox: A Generative Model for Music
+            "2209.03143",   # AudioLM: Language Modeling for Audio Generation
+            "2212.04356",   # Whisper: Robust Speech Recognition via Large-Scale Supervision
+            "2301.02111",   # VALL-E: Neural Codec Language Models for Zero-Shot TTS
+            "2306.05284",   # MusicGen: Simple and Controllable Music Generation
+            "2306.15687",   # Voicebox: Text-Guided Universal Speech Generation
+            "2312.01479",   # OpenVoice: Versatile Instant Voice Cloning
+            "2406.02430",   # Seed-TTS: High-Quality Versatile Speech Generation
+            "2406.04904",   # XTTS: Massively Multilingual Zero-Shot TTS
+            "2407.05407",   # CosyVoice: Scalable Multilingual Zero-Shot TTS
+            "2409.00750",   # MaskGCT: Zero-Shot TTS with Masked Generative Codec
+            "2410.06885",   # F5-TTS: Fluent and Faithful Speech with Flow Matching
+        ],
+    },
 ]
 
 _UPSERT_PAPER_SQL = text("""
