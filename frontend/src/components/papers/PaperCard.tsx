@@ -1,20 +1,40 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Bookmark, ExternalLink, Tag as TagIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Paper } from "@/types";
+import { useAuthStore } from "@/stores/authStore";
+import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
 import TagPicker from "@/components/tags/TagPicker";
 import LaTeXText from "@/components/common/LaTeXText";
 
 interface PaperCardProps {
   paper: Paper;
-  onSave?: (id: string) => void;
   onTag?: boolean;
-  saved?: boolean;
 }
 
-export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProps) {
+export default function PaperCard({ paper, onTag }: PaperCardProps) {
   const [showTagPicker, setShowTagPicker] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
+  const { data: savedData } = useSavedPapers();
+  const save = useSavePaper();
+  const unsave = useUnsavePaper();
+
+  const savedIds = new Set<string>(
+    (savedData?.papers ?? []).map((p: Paper) => p.id),
+  );
+  const isSaved = savedIds.has(paper.id);
+
+  const handleSave = () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    if (isSaved) unsave.mutate(paper.id);
+    else save.mutate(paper.id);
+  };
+
   const authorStr = paper.authors.map((a) => a.name).join(", ");
   const timeAgo = paper.published_at
     ? formatDistanceToNow(new Date(paper.published_at), { addSuffix: true })
@@ -33,19 +53,17 @@ export default function PaperCard({ paper, onSave, onTag, saved }: PaperCardProp
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{authorStr}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {onSave && (
-            <button
-              onClick={() => onSave(paper.id)}
-              className={`p-1.5 rounded-lg transition-colors ${
-                saved
-                  ? "text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950"
-                  : "text-gray-400 hover:text-brand-600 hover:bg-gray-100 dark:hover:bg-gray-800"
-              }`}
-              aria-label={saved ? "Unsave from reading list" : "Save to reading list"}
-            >
-              <Bookmark size={16} fill={saved ? "currentColor" : "none"} />
-            </button>
-          )}
+          <button
+            onClick={handleSave}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isSaved
+                ? "text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950"
+                : "text-gray-400 hover:text-brand-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+            aria-label={isSaved ? "Unsave from reading list" : "Save to reading list"}
+          >
+            <Bookmark size={16} fill={isSaved ? "currentColor" : "none"} />
+          </button>
           {onTag && (
             <div className="relative">
               <button

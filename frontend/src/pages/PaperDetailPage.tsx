@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon, FolderPlus, BookOpen, GraduationCap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import { useState } from "react";
 
 export default function PaperDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { data: paper, isLoading } = usePaper(id!);
   const { data: similar, isLoading: loadingSimilar } = useSimilarPapers(id!);
@@ -77,13 +78,13 @@ export default function PaperDetailPage() {
         <meta name="twitter:title" content={paper.title} />
         <meta name="twitter:description" content={metaDescription} />
       </Helmet>
-      <Link
-        to="/"
+      <button
+        onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 dark:hover:text-brand-400"
       >
         <ArrowLeft size={14} />
         Back
-      </Link>
+      </button>
 
       <div>
         <LaTeXText as="h1" text={paper.title} className="text-2xl font-bold leading-tight" />

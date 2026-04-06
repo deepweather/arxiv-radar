@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { EyeOff } from "lucide-react";
 import { usePapers } from "@/hooks/usePapers";
-import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
 import PaperList from "@/components/papers/PaperList";
 import { useAuthStore } from "@/stores/authStore";
 import { Paper } from "@/types";
@@ -46,22 +45,12 @@ export default function SearchPage() {
       excludeTagged: user && hideTagged ? true : undefined,
     });
 
-  const save = useSavePaper();
-  const unsave = useUnsavePaper();
-  const { data: savedData } = useSavedPapers();
-  const savedIds = new Set<string>((savedData?.papers ?? []).map((p: Paper) => p.id));
-
   const papers: Paper[] = data?.pages.flatMap((p) => p.papers) ?? [];
 
   const toggleCat = (cat: string) => {
     setSelectedCats((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
     );
-  };
-
-  const handleSave = (id: string) => {
-    if (savedIds.has(id)) unsave.mutate(id);
-    else save.mutate(id);
   };
 
   return (
@@ -146,9 +135,7 @@ export default function SearchPage() {
         loading={isLoading || isFetchingNextPage}
         hasMore={hasNextPage}
         onLoadMore={() => fetchNextPage()}
-        onSave={user ? handleSave : undefined}
         onTag={!!user}
-        savedIds={savedIds}
       />
     </div>
   );

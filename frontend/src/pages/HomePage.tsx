@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { EyeOff } from "lucide-react";
 import { usePapers, useRecommendations } from "@/hooks/usePapers";
-import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
 import PaperList from "@/components/papers/PaperList";
 import { useAuthStore } from "@/stores/authStore";
 import { Paper } from "@/types";
@@ -27,11 +26,6 @@ export default function HomePage() {
   });
   const forYouQuery = useRecommendations("for-you");
 
-  const save = useSavePaper();
-  const unsave = useUnsavePaper();
-  const { data: savedData } = useSavedPapers();
-  const savedIds = new Set<string>((savedData?.papers ?? []).map((p: Paper) => p.id));
-
   const recentPapers: Paper[] = recentQuery.data?.pages.flatMap((p) => p.papers) ?? [];
   const forYouPapers: Paper[] = forYouQuery.data?.papers ?? [];
 
@@ -45,11 +39,6 @@ export default function HomePage() {
     setSelectedCats((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
     );
-  };
-
-  const handleSave = (id: string) => {
-    if (savedIds.has(id)) unsave.mutate(id);
-    else save.mutate(id);
   };
 
   const getTitle = () => {
@@ -162,9 +151,7 @@ export default function HomePage() {
           loading={isLoading}
           hasMore={!showForYou && !showRandom ? recentQuery.hasNextPage : undefined}
           onLoadMore={!showForYou && !showRandom ? () => recentQuery.fetchNextPage() : undefined}
-          onSave={user ? handleSave : undefined}
           onTag={!!user}
-          savedIds={savedIds}
         />
       )}
     </div>

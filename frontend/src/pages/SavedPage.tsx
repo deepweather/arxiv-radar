@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useSavedPapers, useUnsavePaper } from "@/hooks/useCollections";
+import { useSavedPapers } from "@/hooks/useCollections";
 import { useAuthStore } from "@/stores/authStore";
 import PaperList from "@/components/papers/PaperList";
 import { Paper } from "@/types";
@@ -7,7 +7,6 @@ import { Paper } from "@/types";
 export default function SavedPage() {
   const user = useAuthStore((s) => s.user);
   const { data, isLoading } = useSavedPapers();
-  const unsave = useUnsavePaper();
 
   if (!user) {
     return (
@@ -21,7 +20,6 @@ export default function SavedPage() {
   }
 
   const papers: Paper[] = data?.papers ?? [];
-  const savedIds = new Set(papers.map((p) => p.id));
 
   return (
     <div className="space-y-6">
@@ -35,8 +33,6 @@ export default function SavedPage() {
       <PaperList
         papers={papers}
         loading={isLoading}
-        savedIds={savedIds}
-        onSave={(id) => unsave.mutate(id)}
       />
     </div>
   );

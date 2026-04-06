@@ -4,9 +4,7 @@ import PaperCard from "./PaperCard";
 interface PaperListProps {
   papers: Paper[];
   loading?: boolean;
-  onSave?: (id: string) => void;
   onTag?: boolean;
-  savedIds?: Set<string>;
   onLoadMore?: () => void;
   hasMore?: boolean;
 }
@@ -14,9 +12,7 @@ interface PaperListProps {
 export default function PaperList({
   papers,
   loading,
-  onSave,
   onTag,
-  savedIds,
   onLoadMore,
   hasMore,
 }: PaperListProps) {
@@ -55,9 +51,7 @@ export default function PaperList({
         <PaperCard
           key={paper.id}
           paper={paper}
-          onSave={onSave}
           onTag={onTag}
-          saved={savedIds?.has(paper.id)}
         />
       ))}
       {hasMore && onLoadMore && (
