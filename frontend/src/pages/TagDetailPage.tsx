@@ -43,6 +43,7 @@ export default function TagDetailPage() {
       <PaperList
         papers={recs?.papers ?? []}
         loading={loadingRecs}
+        toolbar
       />
 
       {!loadingRecs && (!recs || recs.papers.length === 0) && taggedPapers.length === 0 && (
@@ -70,6 +71,7 @@ export default function TagDetailPage() {
                 loading={loadingTagged}
                 hasMore={taggedPapers.length > visibleCount}
                 onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                toolbar
               />
             </div>
           )}

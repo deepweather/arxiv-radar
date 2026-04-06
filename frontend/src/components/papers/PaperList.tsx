@@ -1,5 +1,38 @@
+import { useState, useMemo } from "react";
+import { Search, ArrowUpDown } from "lucide-react";
 import { Paper } from "@/types";
 import PaperCard from "./PaperCard";
+
+type SortKey = "newest" | "oldest" | "title";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "title", label: "Title A–Z" },
+];
+
+function sortPapers(papers: Paper[], key: SortKey): Paper[] {
+  const sorted = [...papers];
+  switch (key) {
+    case "newest":
+      return sorted.sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+    case "oldest":
+      return sorted.sort((a, b) => (a.published_at ?? "").localeCompare(b.published_at ?? ""));
+    case "title":
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+  }
+}
+
+function filterPapers(papers: Paper[], query: string): Paper[] {
+  if (!query) return papers;
+  const q = query.toLowerCase();
+  return papers.filter(
+    (p) =>
+      p.title.toLowerCase().includes(q) ||
+      p.authors.some((a) => a.name.toLowerCase().includes(q)) ||
+      p.categories.some((c) => c.toLowerCase().includes(q)),
+  );
+}
 
 interface PaperListProps {
   papers: Paper[];
@@ -7,6 +40,7 @@ interface PaperListProps {
   onTag?: boolean;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  toolbar?: boolean;
 }
 
 export default function PaperList({
@@ -15,7 +49,16 @@ export default function PaperList({
   onTag,
   onLoadMore,
   hasMore,
+  toolbar,
 }: PaperListProps) {
+  const [sort, setSort] = useState<SortKey>("newest");
+  const [search, setSearch] = useState("");
+
+  const processed = useMemo(() => {
+    if (!toolbar) return papers;
+    return sortPapers(filterPapers(papers, search), sort);
+  }, [papers, toolbar, sort, search]);
+
   if (loading && papers.length === 0) {
     return (
       <div className="space-y-4">
@@ -47,13 +90,49 @@ export default function PaperList({
 
   return (
     <div className="space-y-3">
-      {papers.map((paper) => (
+      {toolbar && papers.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Filter by title, author, category…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-500 placeholder:text-gray-400"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <ArrowUpDown size={14} className="text-gray-400" />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="px-2.5 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          {search && (
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              {processed.length} of {papers.length}
+            </span>
+          )}
+        </div>
+      )}
+      {processed.map((paper) => (
         <PaperCard
           key={paper.id}
           paper={paper}
           onTag={onTag}
         />
       ))}
+      {toolbar && search && processed.length === 0 && (
+        <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+          <p className="text-sm">No papers match "{search}"</p>
+        </div>
+      )}
       {hasMore && onLoadMore && (
         <button
           onClick={onLoadMore}

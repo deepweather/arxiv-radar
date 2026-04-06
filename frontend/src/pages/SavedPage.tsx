@@ -33,6 +33,7 @@ export default function SavedPage() {
       <PaperList
         papers={papers}
         loading={isLoading}
+        toolbar
       />
     </div>
   );

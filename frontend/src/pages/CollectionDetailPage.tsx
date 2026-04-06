@@ -3,8 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Globe, Lock, Share2, Check, Eye, FileText, User as UserIcon } from "lucide-react";
 import { useCollection } from "@/hooks/useCollections";
 import { useAuthStore } from "@/stores/authStore";
-import PaperCard from "@/components/papers/PaperCard";
-import { Paper } from "@/types";
+import PaperList from "@/components/papers/PaperList";
 
 export default function CollectionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,13 +93,10 @@ export default function CollectionDetailPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
-        {data.papers?.length > 0 ? (
-          data.papers.map((p: Paper) => <PaperCard key={p.id} paper={p} />)
-        ) : (
-          <p className="text-center py-8 text-gray-400">No papers in this collection yet.</p>
-        )}
-      </div>
+      <PaperList
+        papers={data.papers ?? []}
+        toolbar
+      />
     </div>
   );
 }
