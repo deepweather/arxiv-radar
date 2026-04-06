@@ -99,6 +99,9 @@ SEED_COLLECTIONS = [
             "2405.13063",   # Aurora: Foundation Model for Earth System (Microsoft)
             "2406.01465",   # AIFS: ECMWF's Data-Driven Forecasting System
             "2503.22235",   # WeatherMesh-3: Operational Global Forecasting (WindBorne)
+            "2410.15076",   # EPT-1.5: Earth Physics Transformer (Jua)
+            "2507.09703",   # EPT-2: Earth Physics Transformer (Jua)
+            "2602.11893",   # Universal Diffusion-Based Probabilistic Downscaling (Jua)
         ],
     },
 ]
