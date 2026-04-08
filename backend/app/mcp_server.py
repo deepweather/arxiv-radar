@@ -200,6 +200,134 @@ async def get_similar_papers(paper_id: str, limit: int = 10, ctx: Context = None
     return "\n".join(parts)
 
 
+@mcp.tool()
+async def list_collections(
+    sort: str = "popular",
+    limit: int = 20,
+    ctx: Context = None,
+) -> str:
+    """List public curated paper collections.
+
+    Browse collections of papers grouped by research topic (e.g. "World Models",
+    "AI Weather Models", "Reasoning & Thinking Models").
+
+    Args:
+        sort: Sort order — "popular" (default, by total views), "trending" (by recent views), or "recent" (newest first)
+        limit: Maximum number of collections to return (default 20, max 50)
+    """
+    from sqlalchemy import select, func
+    from app.db.models import Collection, CollectionPaper, User
+
+    limit = min(limit, 50)
+    factory = _get_factory(ctx)
+    async with factory() as db:
+        paper_count_sq = (
+            select(
+                CollectionPaper.collection_id,
+                func.count().label("paper_count"),
+            )
+            .group_by(CollectionPaper.collection_id)
+            .subquery()
+        )
+
+        q = (
+            select(
+                Collection,
+                User.email,
+                func.coalesce(paper_count_sq.c.paper_count, 0).label("paper_count"),
+            )
+            .join(User, User.id == Collection.user_id)
+            .outerjoin(paper_count_sq, paper_count_sq.c.collection_id == Collection.id)
+            .where(Collection.is_public.is_(True))
+        )
+
+        if sort == "recent":
+            q = q.order_by(Collection.created_at.desc())
+        else:
+            q = q.order_by(func.coalesce(paper_count_sq.c.paper_count, 0).desc())
+
+        q = q.limit(limit)
+        result = await db.execute(q)
+        rows = result.all()
+
+    if not rows:
+        return "No public collections found."
+
+    parts = [f"Found {len(rows)} public collections:\n"]
+    for i, (coll, email, paper_count) in enumerate(rows, 1):
+        parts.append(
+            f"### {i}. **{coll.name}**\n"
+            f"ID: {coll.id}\n"
+            f"Papers: {paper_count}\n"
+            f"Description: {coll.description or 'No description'}\n"
+            f"URL: https://arxivradar.com/collections/{coll.id}\n"
+        )
+    return "\n".join(parts)
+
+
+@mcp.tool()
+async def get_collection(collection_id: str, ctx: Context = None) -> str:
+    """Get a specific paper collection with all its papers.
+
+    Returns the collection metadata and full details of every paper in it.
+
+    Args:
+        collection_id: The collection UUID (from list_collections)
+    """
+    from sqlalchemy import select, func
+    from app.db.models import Collection, CollectionPaper, CollectionView, Paper, User
+
+    factory = _get_factory(ctx)
+    async with factory() as db:
+        result = await db.execute(
+            select(Collection).where(Collection.id == collection_id.strip())
+        )
+        coll = result.scalar_one_or_none()
+
+        if not coll:
+            return f"Collection '{collection_id}' not found."
+        if not coll.is_public:
+            return "This collection is private."
+
+        owner_result = await db.execute(select(User.email).where(User.id == coll.user_id))
+        owner_email = owner_result.scalar_one()
+
+        papers_result = await db.execute(
+            select(Paper, CollectionPaper.note)
+            .join(CollectionPaper, CollectionPaper.paper_id == Paper.id)
+            .where(CollectionPaper.collection_id == coll.id)
+            .order_by(CollectionPaper.created_at.desc())
+        )
+        papers = papers_result.all()
+
+        view_count_result = await db.execute(
+            select(func.count()).select_from(CollectionView).where(CollectionView.collection_id == coll.id)
+        )
+        view_count = view_count_result.scalar() or 0
+
+    header = (
+        f"**{coll.name}**\n"
+        f"Description: {coll.description or 'No description'}\n"
+        f"Owner: {owner_email.split('@')[0]}\n"
+        f"Papers: {len(papers)} | Views: {view_count}\n"
+        f"URL: https://arxivradar.com/collections/{coll.id}\n"
+    )
+
+    if not papers:
+        return header + "\nNo papers in this collection yet."
+
+    parts = [header, f"\n{'─' * 40}\n"]
+    for i, (p, note) in enumerate(papers, 1):
+        paper_dict = {
+            "id": p.id, "title": p.title, "summary": p.summary,
+            "authors": p.authors, "categories": p.categories,
+            "pdf_url": p.pdf_url,
+            "published_at": p.published_at.isoformat() if p.published_at else None,
+        }
+        parts.append(f"### {i}. {_format_paper(paper_dict)}\n")
+    return "\n".join(parts)
+
+
 # ── Entry point ────────────────────────────────────────────────────────
 
 def main():
