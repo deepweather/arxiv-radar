@@ -17,6 +17,8 @@ The arxiv-radar MCP server provides AI agents with tools to search and retrieve 
 - `get_paper(paper_id)`: Get metadata and abstract for a single paper by arXiv ID (e.g. "2301.12345").
 - `list_recent_papers(limit?, categories?, days?, sort?)`: Browse recently published papers. Defaults to last 7 days, sorted newest first.
 - `get_similar_papers(paper_id, limit?)`: Find papers similar to a given paper using embedding vector similarity.
+- `list_collections(sort?, limit?)`: Browse public curated paper collections grouped by research topic (e.g. "World Models", "AI Weather Models"). Sort by "popular" (default), "trending", or "recent".
+- `get_collection(collection_id)`: Get a specific collection with all its papers, metadata, and description. Use the collection ID from list_collections.
 
 ### Paper Output Format
 

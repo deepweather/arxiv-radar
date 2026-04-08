@@ -46,7 +46,7 @@ The worker container automatically ingests new papers and computes embeddings ev
 
 ## MCP Server for AI Agents
 
-The MCP (Model Context Protocol) server lets AI agents search and retrieve arXiv papers programmatically. It exposes 4 tools:
+The MCP (Model Context Protocol) server lets AI agents search and retrieve arXiv papers programmatically. It exposes 6 tools:
 
 | Tool | Description |
 |---|---|
@@ -54,6 +54,8 @@ The MCP (Model Context Protocol) server lets AI agents search and retrieve arXiv
 | `get_paper` | Get metadata and abstract for a single paper by arXiv ID. |
 | `list_recent_papers` | Browse recently published papers with optional category/date filters. |
 | `get_similar_papers` | Find papers similar to a given paper via embedding similarity. |
+| `list_collections` | Browse public curated paper collections grouped by research topic. |
+| `get_collection` | Get a specific collection with all its papers and metadata. |
 
 Every result includes **PDF**, **HTML** (ar5iv), and **abstract page** URLs so agents can fetch full paper content on demand.
 

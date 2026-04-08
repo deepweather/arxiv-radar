@@ -61,6 +61,16 @@ const TOOLS = [
     description: "Find papers similar to a given paper via embedding similarity.",
     params: "paper_id, limit?",
   },
+  {
+    name: "list_collections",
+    description: "Browse public curated paper collections grouped by research topic.",
+    params: "sort?, limit?",
+  },
+  {
+    name: "get_collection",
+    description: "Get a specific collection with all its papers and metadata.",
+    params: "collection_id",
+  },
 ];
 
 function CopyButton({ text, className = "" }: { text: string; className?: string }) {
