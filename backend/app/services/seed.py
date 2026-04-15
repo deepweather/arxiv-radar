@@ -102,6 +102,7 @@ SEED_COLLECTIONS = [
             "2410.15076",   # EPT-1.5: Earth Physics Transformer (Jua)
             "2507.09703",   # EPT-2: Earth Physics Transformer (Jua)
             "2602.11893",   # Universal Diffusion-Based Probabilistic Downscaling (Jua)
+            "2509.13523",   # AERIS: Argonne Earth Systems Model (Swin Diffusion Transformer)
         ],
     },
     {
