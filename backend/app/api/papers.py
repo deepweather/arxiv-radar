@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.db.models import User
 from app.api.deps import get_optional_user
-from app.api.rate_limit import rate_limit_ai_ready_paper
+from app.api.rate_limit import check_rate_limit
+from app.config import settings
 from app.services.search import hybrid_search, list_papers, get_paper, count_papers
 from app.services.recommender import similar_papers, papers_by_authors
 from app.services.cache import cache_get, cache_set
@@ -172,11 +173,19 @@ async def get_paper_detail(paper_id: str, request: Request, db: AsyncSession = D
 @router.get("/{paper_id}/ai-ready")
 async def get_paper_ai_ready(
     paper_id: str,
-    _: None = Depends(rate_limit_ai_ready_paper),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    async def _enforce_rate_limit() -> None:
+        await check_rate_limit(
+            request,
+            "ai_ready_paper",
+            max_attempts=settings.ai_ready_rate_limit_max,
+            window_seconds=settings.ai_ready_rate_limit_window_seconds,
+        )
+
     try:
-        return await get_ai_ready_paper(db, paper_id)
+        return await get_ai_ready_paper(db, paper_id, on_cache_miss=_enforce_rate_limit)
     except AIReadyPaperError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

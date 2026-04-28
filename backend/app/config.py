@@ -24,8 +24,9 @@ class Settings(BaseSettings):
 
     # AI-ready paper cache
     paper_cache_dir: str = "/app/paper_cache"
+    # Rate limit applies only to cache-miss generation, not cached responses.
     ai_ready_rate_limit_max: int = 5
-    ai_ready_rate_limit_window_seconds: int = 3600
+    ai_ready_rate_limit_window_seconds: int = 60
 
     # Email
     smtp_host: str = ""

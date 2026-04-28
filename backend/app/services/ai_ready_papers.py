@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import time
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -414,9 +415,57 @@ async def _generate_markdown(
     raise AIReadyPaperError(503, "Could not retrieve paper content from ar5iv, arXiv source, or PDF")
 
 
-async def get_ai_ready_paper(db: AsyncSession, raw_paper_id: str) -> dict:
+def _cache_hit_response(
+    paper_id: str,
+    version: str | None,
+    paper: dict,
+    markdown_path: Path,
+    source: str,
+) -> dict:
+    content_id = _versioned_id(paper_id, version)
+    return {
+        "paper_id": paper_id,
+        "version": version,
+        "versioned_id": content_id,
+        "paper": paper,
+        "markdown": markdown_path.read_text(encoding="utf-8"),
+        "source": source,
+        "cached": True,
+        "pdf_cached": _cache_path("pdf", content_id, ".pdf").exists(),
+    }
+
+
+async def get_ai_ready_paper(
+    db: AsyncSession,
+    raw_paper_id: str,
+    *,
+    on_cache_miss: Callable[[], Awaitable[None]] | None = None,
+) -> dict:
+    """Return the AI-ready paper.
+
+    `on_cache_miss` is awaited only when the local cache cannot satisfy the
+    request, before any expensive arXiv metadata fetch or content generation.
+    Cache hits never invoke it. The callback may raise to abort generation
+    (e.g. rate limiting).
+    """
+
     paper_id = normalize_arxiv_id(raw_paper_id)
     requested_version = _requested_version(raw_paper_id)
+
+    # Fast path: try the local cache using metadata we already have in the DB.
+    # No arXiv API call, no rate limit, no lock.
+    paper = await get_paper(db, paper_id)
+    fast_version = requested_version or _version_from_paper(paper)
+    if paper and fast_version:
+        fast_markdown_path = _cache_path("markdown", _versioned_id(paper_id, fast_version), ".md")
+        if fast_markdown_path.exists():
+            source = await _cached_content_source(db, paper_id)
+            return _cache_hit_response(paper_id, fast_version, paper, fast_markdown_path, source)
+
+    # Cache miss path: rate-limit before doing anything expensive.
+    if on_cache_miss is not None:
+        await on_cache_miss()
+
     paper, version, update_fulltext = await _ensure_paper_metadata(db, paper_id, requested_version)
     paper_id = paper["id"]
     content_id = _versioned_id(paper_id, version)
@@ -424,31 +473,13 @@ async def get_ai_ready_paper(db: AsyncSession, raw_paper_id: str) -> dict:
     markdown_path = _cache_path("markdown", content_id, ".md")
     if markdown_path.exists():
         source = await _cached_content_source(db, paper_id)
-        return {
-            "paper_id": paper_id,
-            "version": version,
-            "versioned_id": content_id,
-            "paper": paper,
-            "markdown": markdown_path.read_text(encoding="utf-8"),
-            "source": source,
-            "cached": True,
-            "pdf_cached": _cache_path("pdf", content_id, ".pdf").exists(),
-        }
+        return _cache_hit_response(paper_id, version, paper, markdown_path, source)
 
     lock_token = await _acquire_generation_lock(content_id)
     try:
         if markdown_path.exists():
             source = await _cached_content_source(db, paper_id)
-            return {
-                "paper_id": paper_id,
-                "version": version,
-                "versioned_id": content_id,
-                "paper": paper,
-                "markdown": markdown_path.read_text(encoding="utf-8"),
-                "source": source,
-                "cached": True,
-                "pdf_cached": _cache_path("pdf", content_id, ".pdf").exists(),
-            }
+            return _cache_hit_response(paper_id, version, paper, markdown_path, source)
 
         generated = await _generate_markdown(db, paper, version, update_fulltext)
         return {

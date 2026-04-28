@@ -11,6 +11,7 @@ import TagPicker from "@/components/tags/TagPicker";
 import CollectionPicker from "@/components/collections/CollectionPicker";
 import LaTeXText from "@/components/common/LaTeXText";
 import api from "@/api/client";
+import { getErrorDetail, getHttpStatus, getRetryAfterSeconds } from "@/api/errors";
 import { Paper } from "@/types";
 import { useState } from "react";
 
@@ -87,6 +88,29 @@ export default function PaperDetailPage() {
     link.remove();
     URL.revokeObjectURL(url);
   };
+
+  const aiReadyErrorStatus = aiReadyError ? getHttpStatus(aiReadyError) : null;
+  const aiReadyRetryAfter = aiReadyError ? getRetryAfterSeconds(aiReadyError) : null;
+  const aiReadyErrorDetail = aiReadyError ? getErrorDetail(aiReadyError) : null;
+  const formatRetryAfter = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.ceil(seconds / 60);
+    return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  };
+  const aiReadyErrorMessage = (() => {
+    if (!aiReadyError) return null;
+    if (aiReadyErrorStatus === 429) {
+      const retry = aiReadyRetryAfter ? ` Try again in ${formatRetryAfter(aiReadyRetryAfter)}.` : "";
+      return `Rate limit reached for generating new AI-ready papers.${retry}`;
+    }
+    if (aiReadyErrorStatus === 404) {
+      return "Paper not found on arXiv.";
+    }
+    if (aiReadyErrorStatus === 503) {
+      return "Could not retrieve paper content from arXiv right now. Please try again later.";
+    }
+    return aiReadyErrorDetail ?? "Could not prepare AI-ready markdown. Please try again later.";
+  })();
 
   return (
     <div className="space-y-8">
@@ -230,9 +254,9 @@ export default function PaperDetailPage() {
               Preparing the full paper markdown. First requests can take a few seconds.
             </p>
           )}
-          {aiReadyError && (
+          {aiReadyErrorMessage && (
             <p className="text-sm text-red-600 dark:text-red-400">
-              Could not prepare AI-ready markdown. Please try again later.
+              {aiReadyErrorMessage}
             </p>
           )}
           {aiReady && (

@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import api from "@/api/client";
+import { getHttpStatus } from "@/api/errors";
 import { AIReadyPaper, Paper } from "@/types";
 
 interface PapersResponse {
@@ -69,6 +70,11 @@ export function useAIReadyPaper(id: string, enabled = false) {
     },
     enabled: !!id && enabled,
     staleTime: 1000 * 60 * 60,
+    retry: (failureCount, error) => {
+      const status = getHttpStatus(error);
+      if (status !== null && status >= 400 && status < 500) return false;
+      return failureCount < 2;
+    },
   });
 }
 
