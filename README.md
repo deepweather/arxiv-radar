@@ -8,7 +8,7 @@ Modern arXiv paper discovery with semantic search, personalized recommendations,
 - **Personalized recommendations** — tag papers you like, get recommendations based on embedding similarity
 - **Reading lists and collections** — save papers, organize into shareable collections
 - **Citation graph** — view citing/cited-by relationships via Semantic Scholar API
-- **AI-ready paper markdown** — lazily fetch ar5iv HTML (with source/PDF fallbacks), cache it locally, and return markdown for agents
+- **AI-ready paper markdown** — get full paper text as clean markdown for agents and notes
 - **Trending papers** — see what the community is tagging
 - **Notifications** — Slack/Discord webhooks and email digests for new matching papers
 - **MCP server** — expose paper search and retrieval as tools for AI agents (Claude, Cursor, etc.)
@@ -53,13 +53,13 @@ The MCP (Model Context Protocol) server lets AI agents search and retrieve arXiv
 |---|---|
 | `search_papers` | Semantic search over paper abstracts. Supports category filters, date ranges, and sort order. |
 | `get_paper` | Get metadata and abstract for a single paper by arXiv ID. |
-| `get_ai_ready_paper` | Lazily generate and return version-aware AI-readable markdown for a paper. |
+| `get_ai_ready_paper` | Get the full paper as clean markdown for AI assistants. |
 | `list_recent_papers` | Browse recently published papers with optional category/date filters. |
 | `get_similar_papers` | Find papers similar to a given paper via embedding similarity. |
 | `list_collections` | Browse public curated paper collections grouped by research topic. |
 | `get_collection` | Get a specific collection with all its papers and metadata. |
 
-Paper search results include **PDF**, **HTML** (ar5iv), and **abstract page** URLs. Use `get_ai_ready_paper` when an agent needs full paper markdown served from the local version-aware cache.
+Paper search results include **PDF**, **HTML** (ar5iv), and **abstract page** URLs. Use `get_ai_ready_paper` when an agent needs the full paper text in markdown.
 
 ### Public Instance
 
@@ -203,7 +203,7 @@ Key endpoints:
 
 - `GET /api/papers` — list/search papers (supports `q`, `days`, `categories`, pagination)
 - `GET /api/papers/{id}` — paper detail
-- `GET /api/papers/{id}/ai-ready` — lazily generate and return version-aware AI-readable markdown (public, IP rate-limited)
+- `GET /api/papers/{id}/ai-ready` — get full paper text as markdown (public, IP rate-limited)
 - `GET /api/papers/{id}/similar` — similar papers by embedding
 - `GET /api/recommendations/for-you` — personalized feed
 - `GET /api/recommendations/tag/{id}` — recommendations for a tag

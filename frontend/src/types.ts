@@ -24,6 +24,17 @@ export interface Paper {
   user_tags?: UserTag[];
 }
 
+export interface AIReadyPaper {
+  paper_id: string;
+  version: string | null;
+  versioned_id: string;
+  paper: Paper;
+  markdown: string;
+  source: string;
+  cached: boolean;
+  pdf_cached: boolean;
+}
+
 export interface Tag {
   id: number;
   name: string;

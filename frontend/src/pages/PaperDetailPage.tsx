@@ -1,9 +1,9 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon, FolderPlus, BookOpen, GraduationCap } from "lucide-react";
+import { ExternalLink, FileText, ArrowLeft, Bookmark, Tag as TagIcon, FolderPlus, BookOpen, GraduationCap, Bot, Copy, Check, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { usePaper, useSimilarPapers } from "@/hooks/usePapers";
+import { useAIReadyPaper, usePaper, useSimilarPapers } from "@/hooks/usePapers";
 import { useSavePaper, useUnsavePaper, useSavedPapers } from "@/hooks/useCollections";
 import { useAuthStore } from "@/stores/authStore";
 import PaperCard from "@/components/papers/PaperCard";
@@ -33,6 +33,9 @@ export default function PaperDetailPage() {
   const { data: savedData } = useSavedPapers();
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const [loadAIReady, setLoadAIReady] = useState(false);
+  const [copiedAIReady, setCopiedAIReady] = useState(false);
+  const { data: aiReady, isFetching: loadingAIReady, error: aiReadyError } = useAIReadyPaper(id!, loadAIReady);
 
   const savedIds = new Set<string>(
     (savedData?.papers ?? []).map((p: Paper) => p.id),
@@ -64,6 +67,26 @@ export default function PaperDetailPage() {
   const metaDescription = paper.summary.length > 200
     ? paper.summary.slice(0, 197) + "..."
     : paper.summary;
+
+  const copyAIReadyMarkdown = async () => {
+    if (!aiReady?.markdown) return;
+    await navigator.clipboard.writeText(aiReady.markdown);
+    setCopiedAIReady(true);
+    setTimeout(() => setCopiedAIReady(false), 2000);
+  };
+
+  const downloadAIReadyMarkdown = () => {
+    if (!aiReady?.markdown) return;
+    const blob = new Blob([aiReady.markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${aiReady.versioned_id || paper.id}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-8">
@@ -124,6 +147,14 @@ export default function PaperDetailPage() {
             PDF
           </a>
         )}
+        <button
+          onClick={() => setLoadAIReady(true)}
+          disabled={loadingAIReady}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <Bot size={14} />
+          {loadingAIReady ? "Preparing..." : aiReady ? "AI-ready markdown" : "Get AI-ready markdown"}
+        </button>
         {user && (
           <>
             <button
@@ -164,6 +195,61 @@ export default function PaperDetailPage() {
           </>
         )}
       </div>
+
+      {(loadAIReady || aiReady) && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">AI-ready markdown</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Full paper text formatted as markdown for AI assistants, notes, and copy/paste workflows.
+              </p>
+            </div>
+            {aiReady && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={copyAIReadyMarkdown}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  {copiedAIReady ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedAIReady ? "Copied" : "Copy"}
+                </button>
+                <button
+                  onClick={downloadAIReadyMarkdown}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <Download size={14} />
+                  Download .md
+                </button>
+              </div>
+            )}
+          </div>
+
+          {loadingAIReady && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Preparing the full paper markdown. First requests can take a few seconds.
+            </p>
+          )}
+          {aiReadyError && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              Could not prepare AI-ready markdown. Please try again later.
+            </p>
+          )}
+          {aiReady && (
+            <>
+              <div className="flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <span className="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">Version: {aiReady.versioned_id}</span>
+                <span className="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">Source: {aiReady.source}</span>
+                <span className="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">{aiReady.cached ? "Cached" : "Generated now"}</span>
+              </div>
+              <pre className="max-h-80 overflow-auto rounded-lg bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 p-3 text-xs leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {aiReady.markdown.slice(0, 4000)}
+                {aiReady.markdown.length > 4000 ? "\n\n... (preview truncated; copy or download for full markdown)" : ""}
+              </pre>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="prose dark:prose-invert max-w-none">
         <h2 className="text-lg font-semibold mb-2">Abstract</h2>

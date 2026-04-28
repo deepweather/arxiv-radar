@@ -15,13 +15,13 @@ The arxiv-radar MCP server provides AI agents with tools to search and retrieve 
 
 - `search_papers(query, limit?, categories?, days?, sort?)`: Semantic search over paper abstracts. Returns titles, authors, abstracts, and links (PDF, HTML, abstract page). Supports category filtering (e.g. "cs.LG,cs.AI"), date range (last N days), and sort order ("relevance", "newest", "oldest").
 - `get_paper(paper_id)`: Get metadata and abstract for a single paper by arXiv ID (e.g. "2301.12345").
-- `get_ai_ready_paper(paper_id)`: Get full AI-readable markdown for a paper. Resolves requested/latest arXiv version, prefers ar5iv HTML, falls back to source/PDF, caches artifacts locally by version, and returns the markdown.
+- `get_ai_ready_paper(paper_id)`: Get the full paper as clean markdown for AI assistants. Accepts base arXiv IDs and versioned IDs.
 - `list_recent_papers(limit?, categories?, days?, sort?)`: Browse recently published papers. Defaults to last 7 days, sorted newest first.
 - `get_similar_papers(paper_id, limit?)`: Find papers similar to a given paper using embedding vector similarity.
 - `list_collections(sort?, limit?)`: Browse public curated paper collections grouped by research topic (e.g. "World Models", "AI Weather Models"). Sort by "popular" (default), "trending", or "recent".
 - `get_collection(collection_id)`: Get a specific collection with all its papers, metadata, and description. Use the collection ID from list_collections.
 
-The REST API also exposes `GET /api/papers/{paper_id}/ai-ready` for on-demand AI-readable paper markdown. It resolves the requested/latest paper version, first returns matching locally cached markdown when available, otherwise it fetches ar5iv HTML, falls back to arXiv source/PDF when needed, saves version-aware markdown locally, and returns it. This endpoint is public but rate-limited per IP.
+The REST API also exposes `GET /api/papers/{paper_id}/ai-ready` for full paper markdown. It accepts base arXiv IDs and versioned IDs, caches results by paper version, and is public but rate-limited per IP.
 
 ### Paper Output Format
 
@@ -75,7 +75,7 @@ OpenAPI docs: https://arxivradar.com/api/docs
 Key endpoints:
 - GET /api/papers?q=...&days=...&categories=... — search papers
 - GET /api/papers/{id} — paper detail
-- GET /api/papers/{id}/ai-ready — lazily generate and return AI-readable markdown
+- GET /api/papers/{id}/ai-ready — get full paper text as markdown
 - GET /api/papers/{id}/similar — similar papers
 - GET /api/recommendations/for-you — personalized feed (requires auth)
 - GET /api/social/trending — trending papers

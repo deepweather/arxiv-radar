@@ -52,6 +52,11 @@ const TOOLS = [
     params: "paper_id",
   },
   {
+    name: "get_ai_ready_paper",
+    description: "Get the full paper as clean markdown for AI assistants. Results are cached by arXiv version.",
+    params: "paper_id",
+  },
+  {
     name: "list_recent_papers",
     description: "Browse recently published papers with optional filters.",
     params: "limit?, categories?, days?, sort?",
@@ -213,7 +218,7 @@ export default function ConnectPage() {
           <h2 className="text-lg font-semibold">Available tools</h2>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Every result includes PDF, HTML, and abstract page URLs so agents can fetch full paper content on demand.
+          Search results include PDF, HTML, and abstract page URLs. Use <code className="font-mono">get_ai_ready_paper</code> when an agent needs the full paper text in markdown.
         </p>
         <div className="space-y-3">
           {TOOLS.map((tool) => (

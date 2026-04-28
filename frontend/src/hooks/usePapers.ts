@@ -1,6 +1,6 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import api from "@/api/client";
-import { Paper } from "@/types";
+import { AIReadyPaper, Paper } from "@/types";
 
 interface PapersResponse {
   papers: Paper[];
@@ -57,6 +57,18 @@ export function useSimilarPapers(id: string) {
       return data;
     },
     enabled: !!id,
+  });
+}
+
+export function useAIReadyPaper(id: string, enabled = false) {
+  return useQuery<AIReadyPaper>({
+    queryKey: ["paper", id, "ai-ready"],
+    queryFn: async () => {
+      const { data } = await api.get(`/papers/${id}/ai-ready`);
+      return data;
+    },
+    enabled: !!id && enabled,
+    staleTime: 1000 * 60 * 60,
   });
 }
 

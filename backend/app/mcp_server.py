@@ -142,10 +142,7 @@ async def get_paper(paper_id: str, ctx: Context = None) -> str:
 
 @mcp.tool()
 async def get_ai_ready_paper(paper_id: str, ctx: Context = None) -> str:
-    """Get AI-readable markdown for a paper, generated lazily and cached by arXiv version.
-
-    The server resolves the requested/latest arXiv version, prefers ar5iv HTML for
-    structured content, and falls back to arXiv source/PDF when needed.
+    """Get the full paper as clean markdown for AI assistants.
 
     Args:
         paper_id: The arXiv paper ID (e.g. "2303.08774" or "2303.08774v1")
