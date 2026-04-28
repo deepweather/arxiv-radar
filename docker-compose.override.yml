@@ -8,11 +8,18 @@ services:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - model_cache:/app/model_cache
+      - paper_cache:/app/paper_cache
 
   worker:
     volumes:
       - ./backend/app:/app/app
       - model_cache:/app/model_cache
+
+  mcp:
+    volumes:
+      - ./backend/app:/app/app
+      - model_cache:/app/model_cache
+      - paper_cache:/app/paper_cache
 
   frontend:
     build: !reset null

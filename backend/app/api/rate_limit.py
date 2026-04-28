@@ -76,3 +76,12 @@ async def rate_limit_login(request: Request) -> None:
 
 async def rate_limit_register(request: Request) -> None:
     await check_rate_limit(request, "register", max_attempts=3, window_seconds=3600)
+
+
+async def rate_limit_ai_ready_paper(request: Request) -> None:
+    await check_rate_limit(
+        request,
+        "ai_ready_paper",
+        max_attempts=settings.ai_ready_rate_limit_max,
+        window_seconds=settings.ai_ready_rate_limit_window_seconds,
+    )

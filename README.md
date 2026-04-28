@@ -8,6 +8,7 @@ Modern arXiv paper discovery with semantic search, personalized recommendations,
 - **Personalized recommendations** — tag papers you like, get recommendations based on embedding similarity
 - **Reading lists and collections** — save papers, organize into shareable collections
 - **Citation graph** — view citing/cited-by relationships via Semantic Scholar API
+- **AI-ready paper markdown** — lazily fetch ar5iv HTML (with source/PDF fallbacks), cache it locally, and return markdown for agents
 - **Trending papers** — see what the community is tagging
 - **Notifications** — Slack/Discord webhooks and email digests for new matching papers
 - **MCP server** — expose paper search and retrieval as tools for AI agents (Claude, Cursor, etc.)
@@ -46,18 +47,19 @@ The worker container automatically ingests new papers and computes embeddings ev
 
 ## MCP Server for AI Agents
 
-The MCP (Model Context Protocol) server lets AI agents search and retrieve arXiv papers programmatically. It exposes 6 tools:
+The MCP (Model Context Protocol) server lets AI agents search and retrieve arXiv papers programmatically. It exposes 7 tools:
 
 | Tool | Description |
 |---|---|
 | `search_papers` | Semantic search over paper abstracts. Supports category filters, date ranges, and sort order. |
 | `get_paper` | Get metadata and abstract for a single paper by arXiv ID. |
+| `get_ai_ready_paper` | Lazily generate and return version-aware AI-readable markdown for a paper. |
 | `list_recent_papers` | Browse recently published papers with optional category/date filters. |
 | `get_similar_papers` | Find papers similar to a given paper via embedding similarity. |
 | `list_collections` | Browse public curated paper collections grouped by research topic. |
 | `get_collection` | Get a specific collection with all its papers and metadata. |
 
-Every result includes **PDF**, **HTML** (ar5iv), and **abstract page** URLs so agents can fetch full paper content on demand.
+Paper search results include **PDF**, **HTML** (ar5iv), and **abstract page** URLs. Use `get_ai_ready_paper` when an agent needs full paper markdown served from the local version-aware cache.
 
 ### Public Instance
 
@@ -171,6 +173,9 @@ All configuration is via environment variables (see `.env.example`):
 | `ARXIV_INGEST_BATCH_SIZE` | Max papers per ingest run | `2000` |
 | `EMBEDDING_MODEL` | sentence-transformers model name | `all-MiniLM-L6-v2` |
 | `MODEL_CACHE_DIR` | Path to cache downloaded models | `/app/model_cache` |
+| `PAPER_CACHE_DIR` | Path to cache AI-ready paper HTML/PDF/markdown artifacts | `/app/paper_cache` |
+| `AI_READY_RATE_LIMIT_MAX` | Max AI-ready paper requests per IP per window | `5` |
+| `AI_READY_RATE_LIMIT_WINDOW_SECONDS` | AI-ready paper rate-limit window in seconds | `3600` |
 | `MCP_TRANSPORT` | MCP transport protocol (`sse` or `stdio`) | `sse` |
 | `MCP_HOST` | MCP server bind address | `0.0.0.0` |
 | `MCP_PORT` | MCP server port | `8811` |
@@ -198,6 +203,7 @@ Key endpoints:
 
 - `GET /api/papers` — list/search papers (supports `q`, `days`, `categories`, pagination)
 - `GET /api/papers/{id}` — paper detail
+- `GET /api/papers/{id}/ai-ready` — lazily generate and return version-aware AI-readable markdown (public, IP rate-limited)
 - `GET /api/papers/{id}/similar` — similar papers by embedding
 - `GET /api/recommendations/for-you` — personalized feed
 - `GET /api/recommendations/tag/{id}` — recommendations for a tag

@@ -37,6 +37,7 @@ services:
     env_file: .env
     volumes:
       - model_cache:/app/model_cache
+      - paper_cache:/app/paper_cache
     ports:
       - "8000:8000"
     depends_on:
@@ -74,6 +75,7 @@ services:
       - MCP_PORT=8811
     volumes:
       - model_cache:/app/model_cache
+      - paper_cache:/app/paper_cache
     ports:
       - "8811:8811"
     depends_on:
@@ -114,3 +116,4 @@ volumes:
   pgdata:
   redisdata:
   model_cache:
+  paper_cache:

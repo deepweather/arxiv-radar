@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     embedding_model: str = "all-MiniLM-L6-v2"
     model_cache_dir: str = "/app/model_cache"
 
+    # AI-ready paper cache
+    paper_cache_dir: str = "/app/paper_cache"
+    ai_ready_rate_limit_max: int = 5
+    ai_ready_rate_limit_window_seconds: int = 3600
+
     # Email
     smtp_host: str = ""
     smtp_port: int = 587

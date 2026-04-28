@@ -311,6 +311,8 @@ def _extract_sections_from_html(html: str) -> tuple[str, list[dict]]:
 
     if ltx_sections:
         for sec in ltx_sections:
+            if getattr(sec, "attrs", None) is None:
+                continue
             classes = set(sec.get("class", []))
             if classes & _SKIP_CLASSES:
                 continue

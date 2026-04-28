@@ -9,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.db.models import User
 from app.api.deps import get_optional_user
+from app.api.rate_limit import rate_limit_ai_ready_paper
 from app.services.search import hybrid_search, list_papers, get_paper, count_papers
 from app.services.recommender import similar_papers, papers_by_authors
 from app.services.cache import cache_get, cache_set
+from app.services.ai_ready_papers import AIReadyPaperError, get_ai_ready_paper
 
 router = APIRouter()
 
@@ -165,6 +167,18 @@ async def get_paper_detail(paper_id: str, request: Request, db: AsyncSession = D
     await db.flush()
 
     return paper
+
+
+@router.get("/{paper_id}/ai-ready")
+async def get_paper_ai_ready(
+    paper_id: str,
+    _: None = Depends(rate_limit_ai_ready_paper),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await get_ai_ready_paper(db, paper_id)
+    except AIReadyPaperError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.get("/{paper_id}/by-authors")

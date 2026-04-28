@@ -141,6 +141,35 @@ async def get_paper(paper_id: str, ctx: Context = None) -> str:
 
 
 @mcp.tool()
+async def get_ai_ready_paper(paper_id: str, ctx: Context = None) -> str:
+    """Get AI-readable markdown for a paper, generated lazily and cached by arXiv version.
+
+    The server resolves the requested/latest arXiv version, prefers ar5iv HTML for
+    structured content, and falls back to arXiv source/PDF when needed.
+
+    Args:
+        paper_id: The arXiv paper ID (e.g. "2303.08774" or "2303.08774v1")
+    """
+    from app.services.ai_ready_papers import AIReadyPaperError, get_ai_ready_paper as _get_ai_ready_paper
+
+    factory = _get_factory(ctx)
+    async with factory() as db:
+        try:
+            result = await _get_ai_ready_paper(db, paper_id)
+            await db.commit()
+        except AIReadyPaperError as exc:
+            return f"Could not get AI-ready paper '{paper_id}': {exc.detail}"
+
+    header = (
+        f"AI-ready markdown for {result['versioned_id']}\n"
+        f"Source: {result['source']}\n"
+        f"Cached: {result['cached']}\n"
+        f"PDF cached: {result['pdf_cached']}\n"
+    )
+    return f"{header}\n{result['markdown']}"
+
+
+@mcp.tool()
 async def list_recent_papers(
     limit: int = 20,
     categories: str | None = None,

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -9,16 +10,38 @@ RUN useradd -m -s /bin/bash appuser
 WORKDIR /app
 
 COPY pyproject.toml ./
-COPY app/ ./app/
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python - <<'PY'
+import subprocess
+import sys
+import tomllib
 
-RUN pip install --no-cache-dir .
+with open("pyproject.toml", "rb") as f:
+    dependencies = tomllib.load(f)["project"]["dependencies"]
+
+subprocess.check_call([
+    sys.executable,
+    "-m",
+    "pip",
+    "install",
+    "--retries",
+    "10",
+    "--timeout",
+    "120",
+    *dependencies,
+])
+PY
+
+COPY app/ ./app/
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-deps .
 
 COPY alembic.ini ./
 COPY alembic/ ./alembic/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-RUN mkdir -p /app/model_cache && chown -R appuser:appuser /app
+RUN mkdir -p /app/model_cache /app/paper_cache && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
