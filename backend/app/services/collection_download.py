@@ -1,5 +1,7 @@
 """Batch PDF download service for public collections."""
 
+# TODO(stream_zip): switch to true streaming with https://pypi.org/project/stream-zip/ once retry-on-partial-body and central-directory semantics are designed.
+
 import asyncio
 import io
 import logging
@@ -15,8 +17,10 @@ from app.db.models import Paper
 logger = logging.getLogger(__name__)
 
 MAX_PAPERS = 50
-MAX_TOTAL_BYTES = 500 * 1024 * 1024
+MAX_PDF_BYTES = 25 * 1024 * 1024
+MAX_TOTAL_BYTES = 200 * 1024 * 1024
 MAX_CONCURRENT = 4
+# Peak resident memory is approximately MAX_CONCURRENT x MAX_PDF_BYTES.
 FILENAME_MAX = 80
 USER_AGENT = "arxiv-radar/1.0 (+https://arxivradar.com)"
 
@@ -65,12 +69,19 @@ async def _fetch_pdf(
             try:
                 resp = await client.get(paper.pdf_url)
                 if resp.status_code == 200:
+                    if len(resp.content) > MAX_PDF_BYTES:
+                        return paper, None, "oversize"
                     return paper, resp.content, None
                 if resp.status_code == 404:
                     return paper, None, "http_404"
                 if resp.status_code in (429, 503):
                     retry_after = resp.headers.get("Retry-After")
-                    delay = float(retry_after) if retry_after else 2**attempt + random.uniform(0, 0.5)
+                    delay = 2**attempt + random.uniform(0, 0.5)
+                    if retry_after:
+                        try:
+                            delay = float(retry_after)
+                        except ValueError:
+                            pass
                     last_reason = f"http_{resp.status_code}"
                     if attempt < 2:
                         await asyncio.sleep(delay)
@@ -85,6 +96,12 @@ async def _fetch_pdf(
                 if attempt < 2:
                     await asyncio.sleep(2**attempt + random.uniform(0, 0.5))
 
+        logger.warning(
+            "pdf_fetch_failed paper_id=%s pdf_url=%s reason=%s",
+            paper.id,
+            paper.pdf_url,
+            last_reason,
+        )
         return paper, None, last_reason
 
 
@@ -110,48 +127,59 @@ async def stream_collection_zip(papers: list[Paper]) -> AsyncIterator[bytes]:
         size_limit_hit = False
 
         with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_STORED) as zf:
-            for coro in asyncio.as_completed(futures):
-                paper, pdf_bytes, reason = await coro
+            try:
+                for coro in asyncio.as_completed(futures):
+                    paper, pdf_bytes, reason = await coro
 
-                if reason is not None:
-                    failed_entries[paper.id] = reason
-                    continue
+                    if reason is not None:
+                        failed_entries[paper.id] = reason
+                        continue
 
-                assert pdf_bytes is not None
-                if size_limit_hit or total_bytes + len(pdf_bytes) > MAX_TOTAL_BYTES:
-                    failed_entries[paper.id] = "size_limit"
-                    size_limit_hit = True
-                    continue
+                    assert pdf_bytes is not None
+                    if size_limit_hit or total_bytes + len(pdf_bytes) > MAX_TOTAL_BYTES:
+                        failed_entries[paper.id] = "size_limit"
+                        size_limit_hit = True
+                        continue
 
-                safe_title = sanitize_filename(paper.title or "")
-                arcname = f"{paper.id}-{safe_title}.pdf" if safe_title else f"{paper.id}.pdf"
+                    safe_title = sanitize_filename(paper.title or "")
+                    arcname = f"{paper.id}-{safe_title}.pdf" if safe_title else f"{paper.id}.pdf"
 
-                zf.writestr(arcname, pdf_bytes)
-                ok_entries[paper.id] = arcname
-                total_bytes += len(pdf_bytes)
-                chunk = buf.take()
-                if chunk:
-                    yield chunk
+                    zf.writestr(arcname, pdf_bytes)
+                    ok_entries[paper.id] = arcname
+                    total_bytes += len(pdf_bytes)
+                    chunk = buf.take()
+                    if chunk:
+                        yield chunk
 
-            if not ok_entries:
-                raise RuntimeError("All PDF fetches failed — no entries written to archive")
+                manifest_lines = [
+                    "arxiv-radar collection download manifest",
+                    f"papers_requested: {len(papers)}",
+                    f"papers_ok: {len(ok_entries)}",
+                    f"papers_failed: {len(failed_entries)}",
+                    "",
+                    "ok:",
+                ]
+                for arxiv_id, arcname in sorted(ok_entries.items()):
+                    manifest_lines.append(f"  {arxiv_id} -> {arcname}")
+                manifest_lines.append("")
+                manifest_lines.append("failed:")
+                for arxiv_id, reason in sorted(failed_entries.items()):
+                    manifest_lines.append(f"  {arxiv_id}: {reason}")
 
-            manifest_lines = [
-                "arxiv-radar collection download manifest",
-                f"papers_requested: {len(papers)}",
-                f"papers_ok: {len(ok_entries)}",
-                f"papers_failed: {len(failed_entries)}",
-                "",
-                "ok:",
-            ]
-            for arxiv_id, arcname in sorted(ok_entries.items()):
-                manifest_lines.append(f"  {arxiv_id} -> {arcname}")
-            manifest_lines.append("")
-            manifest_lines.append("failed:")
-            for arxiv_id, reason in sorted(failed_entries.items()):
-                manifest_lines.append(f"  {arxiv_id}: {reason}")
+                zf.writestr("MANIFEST.txt", "\n".join(manifest_lines) + "\n")
+            finally:
+                for future in futures:
+                    if not future.done():
+                        future.cancel()
+                await asyncio.gather(*futures, return_exceptions=True)
 
-            zf.writestr("MANIFEST.txt", "\n".join(manifest_lines) + "\n")
+        logger.info(
+            "collection_zip_complete papers_requested=%d papers_ok=%d papers_failed=%d bytes_written=%d",
+            len(papers),
+            len(ok_entries),
+            len(failed_entries),
+            total_bytes,
+        )
 
     final_chunk = buf.take()
     if final_chunk:

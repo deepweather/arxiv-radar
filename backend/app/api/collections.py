@@ -1,5 +1,6 @@
 import hashlib
 import urllib.parse
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -259,25 +260,34 @@ async def download_collection(
 ):
     await check_rate_limit(request, "collection_download", max_attempts=5, window_seconds=300)
 
-    result = await db.execute(select(Collection).where(Collection.id == collection_id))
+    try:
+        collection_uuid = uuid.UUID(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    result = await db.execute(select(Collection).where(Collection.id == collection_uuid))
     coll = result.scalar_one_or_none()
     if not coll or not coll.is_public:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    papers_result = await db.execute(
+    papers_query = (
         select(Paper)
         .join(CollectionPaper, CollectionPaper.paper_id == Paper.id)
         .where(CollectionPaper.collection_id == coll.id)
     )
-    all_papers = list(papers_result.scalars().all())
-
-    # Filter to requested IDs if provided, then drop papers without a PDF URL
     if ids:
-        requested = {i.strip() for i in ids.split(",") if i.strip()}
-        all_papers = [p for p in all_papers if p.id in requested]
+        requested_ids = [i.strip() for i in ids.split(",") if i.strip()]
+        papers_query = papers_query.where(Paper.id.in_(requested_ids))
+    else:
+        papers_query = papers_query.limit(MAX_PAPERS + 1)
+
+    papers_result = await db.execute(papers_query)
+    all_papers = list(papers_result.scalars().all())
 
     papers = [p for p in all_papers if p.pdf_url is not None]
 
+    if len(all_papers) == 0:
+        raise HTTPException(status_code=404, detail="Collection has no papers")
     if len(papers) == 0:
         raise HTTPException(status_code=400, detail="No downloadable papers in selection")
     if len(papers) > MAX_PAPERS:
@@ -288,11 +298,8 @@ async def download_collection(
     quoted_slug = urllib.parse.quote(slug)
 
     async def _generate():
-        try:
-            async for chunk in stream_collection_zip(papers):
-                yield chunk
-        except RuntimeError:
-            raise HTTPException(status_code=502, detail="All PDF fetches failed")
+        async for chunk in stream_collection_zip(papers):
+            yield chunk
 
     return StreamingResponse(
         _generate(),
