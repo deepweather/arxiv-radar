@@ -70,9 +70,10 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      - MCP_TRANSPORT=sse
+      - MCP_TRANSPORT=streamable-http
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8811
+      - MCP_CORS_ORIGINS=${MCP_CORS_ORIGINS:-*}
     volumes:
       - model_cache:/app/model_cache
       - paper_cache:/app/paper_cache

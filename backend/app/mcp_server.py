@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from mcp.server.fastmcp import FastMCP, Context
+from mcp.server.transport_security import TransportSecuritySettings
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from app.config import settings
@@ -354,11 +355,76 @@ async def get_collection(collection_id: str, ctx: Context = None) -> str:
     return "\n".join(parts)
 
 
+# ── HTTP app (Streamable HTTP + legacy SSE, both CORS-enabled) ──────────
+#
+# Web-based MCP clients require:
+#   1. the Streamable HTTP transport (SSE alone is the deprecated transport),
+#   2. CORS headers so a browser origin can reach the endpoint,
+#   3. no origin/host rejection from the transport's DNS-rebinding guard.
+#
+# Desktop clients (e.g. via mcp-remote) still work against the legacy SSE
+# endpoint, so we mount both on one ASGI app. Paths are aligned with the
+# public `/mcp` prefix so the reverse proxy can forward them verbatim:
+#   - Streamable HTTP : POST /mcp
+#   - Legacy SSE      : GET  /mcp/sse   +  POST /mcp/messages/
+
+
+def _cors_origins() -> list[str]:
+    raw = os.getenv("MCP_CORS_ORIGINS", "*").strip()
+    if raw == "*" or not raw:
+        return ["*"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+def build_http_app():
+    """Build the combined Streamable HTTP + SSE Starlette app with CORS."""
+    from starlette.middleware.cors import CORSMiddleware
+
+    # Align transport paths with the public `/mcp` prefix so nginx forwards
+    # `/mcp*` unchanged (no path rewriting / sub_filter hacks needed).
+    mcp.settings.streamable_http_path = "/mcp"
+    mcp.settings.sse_path = "/mcp/sse"
+    mcp.settings.message_path = "/mcp/messages/"
+
+    # This is a public, unauthenticated, read-only server sitting behind a
+    # reverse proxy. The DNS-rebinding guard would otherwise 400 any request
+    # whose Origin/Host isn't localhost; disable it and rely on CORS instead.
+    mcp.settings.transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,
+    )
+
+    # streamable_http_app() carries the session-manager lifespan.
+    app = mcp.streamable_http_app()
+
+    # Fold the legacy SSE routes onto the same app for desktop-client back-compat.
+    sse_routes = mcp.sse_app().router.routes
+    app.router.routes.extend(sse_routes)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
+        allow_headers=["*"],
+        expose_headers=["Mcp-Session-Id"],
+        max_age=86400,
+    )
+    return app
+
+
+# Module-level app so it can be served with `uvicorn app.mcp_server:app`.
+app = build_http_app()
+
+
 # ── Entry point ────────────────────────────────────────────────────────
 
 def main():
     transport = os.getenv("MCP_TRANSPORT", "stdio")
-    mcp.run(transport=transport)
+    if transport in ("http", "streamable-http", "sse"):
+        import uvicorn
+
+        uvicorn.run(app, host=mcp.settings.host, port=mcp.settings.port)
+    else:
+        mcp.run(transport=transport)
 
 
 if __name__ == "__main__":

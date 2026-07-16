@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Copy, Check, Terminal, FileJson, Zap } from "lucide-react";
 
-type ClientTab = "cursor" | "claude-desktop" | "claude-code";
+type ClientTab = "cursor" | "claude-ai" | "claude-desktop" | "claude-code";
 
-const MCP_URL = "https://arxivradar.com/mcp/sse";
+// Streamable HTTP is the modern transport (works with web clients like claude.ai).
+const MCP_URL = "https://arxivradar.com/mcp";
+// Legacy SSE endpoint, kept for older desktop clients.
+const MCP_SSE_URL = "https://arxivradar.com/mcp/sse";
 
 const CLIENT_CONFIGS: Record<ClientTab, { label: string; language: string; content: string; file?: string }> = {
   cursor: {
@@ -14,11 +17,20 @@ const CLIENT_CONFIGS: Record<ClientTab, { label: string; language: string; conte
     content: `{
   "mcpServers": {
     "arxiv-radar": {
-      "type": "sse",
       "url": "${MCP_URL}"
     }
   }
 }`,
+  },
+  "claude-ai": {
+    label: "Claude.ai",
+    language: "text",
+    content: `Settings → Connectors → Add custom connector
+
+Name: arxiv radar
+URL:  ${MCP_URL}
+
+No authentication required.`,
   },
   "claude-desktop": {
     label: "Claude Desktop",
@@ -36,7 +48,7 @@ const CLIENT_CONFIGS: Record<ClientTab, { label: string; language: string; conte
   "claude-code": {
     label: "Claude Code",
     language: "bash",
-    content: `claude mcp add --transport sse arxiv-radar ${MCP_URL}`,
+    content: `claude mcp add --transport http arxiv-radar ${MCP_URL}`,
   },
 };
 
@@ -164,7 +176,9 @@ export default function ConnectPage() {
           <CopyButton text={MCP_URL} />
         </div>
         <p className="text-xs text-gray-400 dark:text-gray-500">
-          SSE transport — no authentication required.
+          Streamable HTTP transport — no authentication required. Older desktop
+          clients can use the legacy SSE endpoint{" "}
+          <code className="font-mono">{MCP_SSE_URL}</code>.
         </p>
       </section>
 
@@ -196,6 +210,12 @@ export default function ConnectPage() {
         {clientTab === "cursor" && (
           <p className="text-xs text-gray-400 dark:text-gray-500">
             Add to <code className="font-mono">.cursor/mcp.json</code> in your project root or <code className="font-mono">~/.cursor/mcp.json</code> for global access. Restart Cursor after saving.
+          </p>
+        )}
+        {clientTab === "claude-ai" && (
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Custom connectors require a paid Claude plan (Pro, Max, Team, or Enterprise).
+            Open <code className="font-mono">Settings → Connectors</code> and paste the URL above.
           </p>
         )}
         {clientTab === "claude-desktop" && (
