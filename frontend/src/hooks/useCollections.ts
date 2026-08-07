@@ -16,8 +16,9 @@ export function useCollections() {
 }
 
 export function useCollection(id: string) {
+  const user = useAuthStore((s) => s.user);
   return useQuery({
-    queryKey: ["collections", id],
+    queryKey: ["collections", id, user?.id ?? "anonymous"],
     queryFn: async () => {
       const { data } = await api.get(`/collections/${id}`);
       return data;

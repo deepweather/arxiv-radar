@@ -32,6 +32,29 @@ export function useMe() {
   });
 }
 
+export function useAuthBootstrap() {
+  const setUser = useAuthStore((s) => s.setUser);
+
+  return useQuery<User | null>({
+    queryKey: ["auth", "bootstrap"],
+    queryFn: async () => {
+      try {
+        const { data } = await api.post("/auth/refresh");
+        setAccessToken(data.access_token);
+        const { data: user } = await api.get("/auth/me");
+        setUser(user);
+        return user;
+      } catch {
+        setAccessToken(null);
+        setUser(null);
+        return null;
+      }
+    },
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
 interface LoginPayload {
   email: string;
   password: string;
@@ -61,6 +84,7 @@ export function useLogin() {
       const { data: user } = await api.get("/auth/me");
       setUser(user);
       queryClient.invalidateQueries({ queryKey: ["auth"] });
+      queryClient.invalidateQueries({ queryKey: ["collections"] });
       navigate("/");
     },
   });
@@ -81,6 +105,7 @@ export function useRegister() {
       const { data: user } = await api.get("/auth/me");
       setUser(user);
       queryClient.invalidateQueries({ queryKey: ["auth"] });
+      queryClient.invalidateQueries({ queryKey: ["collections"] });
       navigate("/");
     },
   });

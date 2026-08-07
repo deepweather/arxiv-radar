@@ -1,8 +1,10 @@
 import hashlib
+import urllib.parse
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +19,12 @@ from app.db.models import (
     SavedPaper,
 )
 from app.api.deps import get_current_user, get_optional_user
+from app.api.rate_limit import check_rate_limit
+from app.services.collection_download import (
+    MAX_PAPERS,
+    sanitize_filename,
+    stream_collection_zip,
+)
 
 router = APIRouter()
 
@@ -241,6 +249,67 @@ async def create_collection(
         "is_public": coll.is_public,
         "share_slug": coll.share_slug,
     }
+
+
+@router.get("/{collection_id}/download")
+async def download_collection(
+    collection_id: str,
+    request: Request,
+    ids: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_rate_limit(request, "collection_download", max_attempts=5, window_seconds=300)
+
+    try:
+        collection_uuid = uuid.UUID(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    result = await db.execute(select(Collection).where(Collection.id == collection_uuid))
+    coll = result.scalar_one_or_none()
+    if not coll or not coll.is_public:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    papers_query = (
+        select(Paper)
+        .join(CollectionPaper, CollectionPaper.paper_id == Paper.id)
+        .where(CollectionPaper.collection_id == coll.id)
+    )
+    if ids:
+        requested_ids = [i.strip() for i in ids.split(",") if i.strip()]
+        papers_query = papers_query.where(Paper.id.in_(requested_ids))
+    else:
+        papers_query = papers_query.limit(MAX_PAPERS + 1)
+
+    papers_result = await db.execute(papers_query)
+    all_papers = list(papers_result.scalars().all())
+
+    papers = [p for p in all_papers if p.pdf_url is not None]
+
+    if len(all_papers) == 0:
+        raise HTTPException(status_code=404, detail="Collection has no papers")
+    if len(papers) == 0:
+        raise HTTPException(status_code=400, detail="No downloadable papers in selection")
+    if len(papers) > MAX_PAPERS:
+        raise HTTPException(status_code=400, detail=f"Max {MAX_PAPERS} papers per download")
+
+    safe_name = sanitize_filename(coll.name or "")
+    slug = safe_name if safe_name else f"collection-{str(coll.id)[:8]}"
+    quoted_slug = urllib.parse.quote(slug)
+
+    async def _generate():
+        async for chunk in stream_collection_zip(papers):
+            yield chunk
+
+    return StreamingResponse(
+        _generate(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{slug}.zip"; filename*=UTF-8\'\'{quoted_slug}.zip',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/{collection_id}/og", response_class=HTMLResponse)

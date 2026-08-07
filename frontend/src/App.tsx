@@ -17,8 +17,11 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ImprintPage from "./pages/ImprintPage";
+import { useAuthBootstrap } from "./hooks/useAuth";
 
 export default function App() {
+  useAuthBootstrap();
+
   return (
     <Routes>
       <Route element={<Layout />}>

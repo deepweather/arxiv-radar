@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import React from "react";
 import { Search, ArrowUpDown } from "lucide-react";
 import { Paper } from "@/types";
 import PaperCard from "./PaperCard";
@@ -41,6 +42,12 @@ interface PaperListProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   toolbar?: boolean;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (paperId: string) => void;
+  onSelectAllVisible?: (visibleIds: string[]) => void;
+  onClearSelection?: () => void;
+  downloadAction?: React.ReactNode;
 }
 
 export default function PaperList({
@@ -50,6 +57,12 @@ export default function PaperList({
   onLoadMore,
   hasMore,
   toolbar,
+  selectable,
+  selectedIds,
+  onToggleSelect,
+  onSelectAllVisible,
+  onClearSelection,
+  downloadAction,
 }: PaperListProps) {
   const [sort, setSort] = useState<SortKey>("newest");
   const [search, setSearch] = useState("");
@@ -121,11 +134,33 @@ export default function PaperList({
           )}
         </div>
       )}
+      {selectable && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => onSelectAllVisible?.(processed.map((p) => p.id))}
+            className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Select all {processed.length}
+          </button>
+          {selectedIds && selectedIds.size > 0 && (
+            <button
+              onClick={() => onClearSelection?.()}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              Clear ({selectedIds.size})
+            </button>
+          )}
+          {downloadAction && <div className="ml-auto">{downloadAction}</div>}
+        </div>
+      )}
       {processed.map((paper) => (
         <PaperCard
           key={paper.id}
           paper={paper}
           onTag={onTag}
+          selectable={selectable}
+          selected={selectedIds?.has(paper.id) ?? false}
+          onToggleSelect={onToggleSelect}
         />
       ))}
       {toolbar && search && processed.length === 0 && (
