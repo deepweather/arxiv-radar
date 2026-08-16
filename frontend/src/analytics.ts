@@ -44,8 +44,12 @@ function loadGtag(): void {
   document.head.appendChild(script);
 
   window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer.push(args);
+  // gtag MUST push the `arguments` object itself, not a rest-param array.
+  // GA4's gtag.js only processes command pushes that are Arguments objects;
+  // a plain array is silently ignored (no /g/collect hits fire).
+  window.gtag = function gtag() {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer.push(arguments);
   };
   window.gtag("js", new Date());
   // We control page_view manually to support client-side routing.
