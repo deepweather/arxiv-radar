@@ -5,7 +5,10 @@ import { BrowserRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { initAnalytics } from "./analytics";
 import "./index.css";
+
+initAnalytics();
 
 const queryClient = new QueryClient({
   defaultOptions: {

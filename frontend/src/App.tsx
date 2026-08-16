@@ -1,5 +1,8 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Layout from "./components/layout/Layout";
+import ConsentBanner from "./components/ConsentBanner";
+import { trackPageView } from "./analytics";
 import HomePage from "./pages/HomePage";
 import SearchPage from "./pages/SearchPage";
 import PaperDetailPage from "./pages/PaperDetailPage";
@@ -19,27 +22,36 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ImprintPage from "./pages/ImprintPage";
 
 export default function App() {
+  const location = useLocation();
+
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/paper/:id" element={<PaperDetailPage />} />
-        <Route path="/tags" element={<TagsPage />} />
-        <Route path="/tags/:id" element={<TagDetailPage />} />
-        <Route path="/collections" element={<CollectionsPage />} />
-        <Route path="/collections/explore" element={<ExploreCollectionsPage />} />
-        <Route path="/collections/:id" element={<CollectionDetailPage />} />
-        <Route path="/saved" element={<SavedPage />} />
-        <Route path="/connect" element={<ConnectPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Route>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/imprint" element={<ImprintPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/paper/:id" element={<PaperDetailPage />} />
+          <Route path="/tags" element={<TagsPage />} />
+          <Route path="/tags/:id" element={<TagDetailPage />} />
+          <Route path="/collections" element={<CollectionsPage />} />
+          <Route path="/collections/explore" element={<ExploreCollectionsPage />} />
+          <Route path="/collections/:id" element={<CollectionDetailPage />} />
+          <Route path="/saved" element={<SavedPage />} />
+          <Route path="/connect" element={<ConnectPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/imprint" element={<ImprintPage />} />
+      </Routes>
+      <ConsentBanner />
+    </>
   );
 }
