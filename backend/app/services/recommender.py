@@ -8,16 +8,18 @@ from app.services.serializers import paper_row_to_dict
 
 async def similar_papers(db: AsyncSession, paper_id: str, limit: int = 20) -> list[dict]:
     """Find papers similar to the given paper using vector cosine similarity."""
+    # Order by distance to a scalar subquery so pgvector can use the HNSW index.
+    # The previous self-join form (p1.embedding <=> p2.embedding) forced a
+    # sequential scan over all embeddings (~500k rows) on every call.
     sql = text("""
         SELECT p2.id, p2.title, p2.summary, p2.authors, p2.categories,
                p2.pdf_url, p2.published_at, p2.updated_at,
-               1 - (p1.embedding <=> p2.embedding) AS similarity
-        FROM papers p1, papers p2
-        WHERE p1.id = :paper_id
-          AND p2.id != :paper_id
+               1 - (p2.embedding <=> q.embedding) AS similarity
+        FROM papers p2,
+             (SELECT embedding FROM papers WHERE id = :paper_id AND embedding IS NOT NULL) q
+        WHERE p2.id != :paper_id
           AND p2.embedding IS NOT NULL
-          AND p1.embedding IS NOT NULL
-        ORDER BY p1.embedding <=> p2.embedding
+        ORDER BY p2.embedding <=> (SELECT embedding FROM papers WHERE id = :paper_id)
         LIMIT :limit
     """)
     result = await db.execute(sql, {"paper_id": paper_id, "limit": limit})
