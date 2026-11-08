@@ -1,0 +1,50 @@
+# Production overrides — use with: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# (COMPOSE_FILE in .env pins this set so plain `docker compose` picks it up.)
+# Only Caddy is published publicly (80/443). Everything else is reached via
+# caddy -> nginx on the internal compose network, so host port bindings are
+# dropped here. (incident 2026-11-06)
+services:
+  postgres:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    restart: always
+    ports: !reset []
+
+  worker:
+    restart: always
+
+  mcp:
+    restart: always
+    ports: !reset []
+
+  frontend:
+    restart: always
+    ports: !reset []
+
+  nginx:
+    ports: !reset
+      - "127.0.0.1:8081:80"
+    restart: always
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - nginx
+
+volumes:
+  caddy_data:
+  caddy_config:
